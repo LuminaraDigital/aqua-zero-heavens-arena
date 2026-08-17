@@ -1,0 +1,29 @@
+{
+  "worker": "testdocs",
+  "status": "blocked_on_harden",
+  "files_changed": [
+    ".gitignore",
+    "tests/security.test.js",
+    "tests/run-tests.js",
+    "tools/check-coverage-gate.js",
+    "docs/SAVE_FORMAT.md",
+    "docs/adr/0004-offline-security-controls.md",
+    "tools/check-production-security.js",
+    ".build/worker-testdocs-status.json"
+  ],
+  "notes": [
+    "G1: .gitignore ignores .env, .env.*, and keeps !.env.example.",
+    "G6: tests/security.test.js covers deep sanitize, ranking roundtrip, import rate limit, security log cap, escapeHtml; registered in run-tests.js and check-coverage-gate.js KEY_TEST_FILES.",
+    "ADR 0004 Accepted (offline client controls; server RLS/auth N/A).",
+    "SAVE_FORMAT.md documents ranking field and security reject behaviors.",
+    "check-production-security.js asserts gitignore env patterns, SECURITY_LOG_KEY/IMPORT_RATE_MAX in save-backup.js, and message-only render console.error.",
+    "backup suite still green (38/38). security suite fails until Harden lands api_contract symbols (expected 17 failing checks of 22).",
+    "Security tests bind contract symbols via sandbox exec so harness EXPORTS lag is not required once save-backup.js defines them."
+  ],
+  "blockers": [
+    "Worker Harden has not landed SECURITY_LOG_KEY, IMPORT_RATE_MAX, checkImportRateLimit, noteImportAttempt, appendSecurityEvent/readSecurityLog/clearSecurityLog, sanitizeRun/sanitizeDaily/sanitizeRanking, or deep nested-key reject in sanitizeSavePayload.",
+    "page.template.html still has console.error(\"render\",err) bare Error (Harden G5); built aqua-zero-heavens-arena.html likewise.",
+    "check-production-security.js fails until Harden defines SECURITY_LOG_KEY and IMPORT_RATE_MAX and switches render catch to message-only.",
+    "G6 npm test green blocked until Harden completes G2-G5 and a rebuild includes those symbols."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Aqua Zero Heavens Arena",
+  "short_name": "AZHA",
+  "description": "AGPLv3 open-source card arena game. Play offline with local saves.",
+  "start_url": "./aqua-zero-heavens-arena.html",
+  "display": "standalone",
+  "background_color": "#0c0d10",
+  "theme_color": "#0c0d10",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+# Static host headers for Aqua Zero Heavens Arena.
+# Netlify forces HTTPS by default; HSTS still declared explicitly.
+
+[[redirects]]
+  from = "/"
+  to = "/aqua-zero-heavens-arena.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://unpkg.com https://config.ton.org https://bridge.tonapi.io https://*.tonconnect.org https://raw.githubusercontent.com wss://bridge.tonapi.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Cache-Control = "max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "max-age=0, must-revalidate"

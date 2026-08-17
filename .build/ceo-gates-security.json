@@ -1,0 +1,78 @@
+{
+  "ceo": "security-checklist-closure",
+  "scope": "offline-static-game",
+  "goal": "production-ready against applicable checklist gaps",
+  "started_at": "2026-08-08T07:41:00+10:00",
+  "status": "production-ready",
+  "completed_at": "2026-08-08T07:55:00+10:00",
+  "gates": [
+    {
+      "id": "G1",
+      "title": "gitignore env hygiene",
+      "owner": "worker-testdocs",
+      "pass": ".gitignore ignores .env and .env.* (optional !.env.example)"
+    },
+    {
+      "id": "G2",
+      "title": "deep save sanitize",
+      "owner": "worker-harden",
+      "pass": "sanitizeSavePayload deep-cleans run, daily, ranking; nested dangerous keys rejected; ranking preserved on load/import"
+    },
+    {
+      "id": "G3",
+      "title": "import rate limit",
+      "owner": "worker-harden",
+      "pass": "client import attempts capped (default 10 per 60s); excess returns clear error and logs security event"
+    },
+    {
+      "id": "G4",
+      "title": "security event log",
+      "owner": "worker-harden",
+      "pass": "localStorage ring buffer azha_security_log (cap 50) records reject/rate-limit/unsafe-key events; erase clears it"
+    },
+    {
+      "id": "G5",
+      "title": "error hygiene",
+      "owner": "worker-harden",
+      "pass": "player-facing say() never receives stack traces; render catch logs message only"
+    },
+    {
+      "id": "G6",
+      "title": "tests",
+      "owner": "worker-testdocs",
+      "pass": "backup/security tests cover deep sanitize, rate limit, security log; npm test green"
+    },
+    {
+      "id": "G7",
+      "title": "ci green",
+      "owner": "ceo",
+      "pass": "npm run ci exits 0"
+    },
+    {
+      "id": "G8",
+      "title": "acceptance + canvases",
+      "owner": "ceo",
+      "pass": "ceo-acceptance.json updated; security checklist canvas rescored; no em dashes in touched files"
+    }
+  ],
+  "not_building": [
+    "real multi-tenant DB RLS",
+    "server auth routes",
+    "server rate limiting / WAF",
+    "remote tamper-evident SIEM"
+  ],
+  "api_contract": {
+    "SECURITY_LOG_KEY": "azha_security_log",
+    "SECURITY_LOG_LIMIT": 50,
+    "appendSecurityEvent": "(localStorageLike, {kind, detail, at?}) -> void",
+    "readSecurityLog": "(localStorageLike) -> {events: array}",
+    "clearSecurityLog": "(localStorageLike) -> void",
+    "IMPORT_RATE_WINDOW_MS": 60000,
+    "IMPORT_RATE_MAX": 10,
+    "checkImportRateLimit": "(state, nowMs) -> {ok, retryAfterMs, state}",
+    "noteImportAttempt": "(state, nowMs) -> state",
+    "sanitizeRun": "(raw) -> object|null",
+    "sanitizeDaily": "(raw) -> object|null",
+    "sanitizeRanking": "(raw) -> object|null"
+  }
+}
