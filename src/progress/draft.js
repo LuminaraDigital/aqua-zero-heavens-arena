@@ -91,6 +91,42 @@ const DRAFT_CONFIG = {
   guardEdge: ["evade", "parry", "counter", "anti-takedown", "recover", "escape"],
 };
 
+/* ---------------- the two outside shades ----------------
+   Both are guarded by typeof and both return the neutral value when the thing
+   they read is absent, so this file still runs, and still tests, in a sandbox
+   that has neither of them.
+
+   THE ARTS THE RUN MAY REACH INTO. A fighter's own disciplines are the base;
+   renown (progress/meta.js) can buy a permanent pass into one more, and the
+   run carries the resolved list as run.metaDiscs. A bought art behaves exactly
+   like an owned one here - ownMul, and its ranges count as home - which is the
+   whole purchase: a wider pool, not a bigger number.
+
+   THE ART YOU HAVE ACTUALLY TRAINED. discDraftMul (progress/discipline-mastery
+   .js) is 1 + 0.20 per grade, so it tops out at 2.00 - just under doorMul, the
+   loudest single shade already in this file - and is EXACTLY 1 on a fresh save,
+   which is why grafting it in moves no existing offer. It reads the live save
+   because mastery climbs during the run; run.save is the injection point a test
+   or a caller uses instead. The power BUDGET is untouched: this shades which
+   card is offered, never how strong a card may be. */
+function draftDiscs(run) {
+  const out = ((run && disciplinesOf(run.hero)) || []).slice();
+  const extra = (run && Array.isArray(run.metaDiscs)) ? run.metaDiscs : [];
+  extra.forEach((id) => {
+    if (typeof DISCIPLINES !== "undefined" && DISCIPLINES[id] && out.indexOf(id) < 0) out.push(id);
+  });
+  return out;
+}
+function draftSaveOf(run) {
+  if (run && run.save) return run.save;
+  return (typeof SAVE !== "undefined") ? SAVE : null;
+}
+function draftMasteryMul(run, disc) {
+  if (typeof discDraftMul !== "function" || !disc) return 1;
+  const m = discDraftMul(draftSaveOf(run), disc);
+  return (typeof m === "number" && isFinite(m) && m > 0) ? m : 1;
+}
+
 const DRAFT_TIER_OF = (t) => (t.learn >= 7 ? "elite" : t.learn >= 4 ? "seasoned" : "core");
 
 /* ---------------- the power ceiling ----------------
@@ -146,7 +182,7 @@ function draftMovelist(run) {
    it just costs you turns you would rather spend hitting someone. */
 function draftRanges(run) {
   const set = {};
-  (disciplinesOf(run.hero) || []).forEach((id) => {
+  draftDiscs(run).forEach((id) => {
     const d = DISCIPLINES[id];
     if (d) d.ranges.forEach((r) => (set[r] = 1));
   });
@@ -204,7 +240,7 @@ function draftPool(run) {
   const lvCap = draftLevel(run) + DRAFT_CONFIG.learnReach;
   const have = draftMovelist(run);
   const reachable = draftRanges(run);
-  const discs = disciplinesOf(run.hero) || [];
+  const discs = draftDiscs(run);
 
   /* what the run already covers, so a draft can prefer to fill a hole */
   const covered = {};
@@ -245,6 +281,8 @@ function draftPool(run) {
     // the key is worth more than the treasure: this opens somewhere new
     if (t.moves && !reachable[t.moves]) w *= DRAFT_CONFIG.doorMul;
     if (!covered[t.cls + "@" + t.range]) w *= DRAFT_CONFIG.gapMul;
+    // and the art you have actually put the hours into is likelier to come up
+    w *= draftMasteryMul(run, t.disc);
 
     out.push({ id, w, cross });
   });
@@ -317,7 +355,7 @@ function draftSummary(run) {
   const taken = draftedTechs(run);
   const head = "STAGE " + stage + " DRAFT - UP TO " + draftPowerBudget(stage) + " POWER";
   if (!taken.length) return head + " - NOTHING TAKEN YET";
-  const discs = disciplinesOf(run.hero) || [];
+  const discs = draftDiscs(run);
   const outside = [];
   taken.forEach((id) => {
     const t = TECH[id];

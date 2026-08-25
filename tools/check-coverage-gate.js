@@ -34,6 +34,13 @@ const KEY_TEST_FILES = [
   "tests/progression.test.js",
   "tests/systems.test.js",
   "tests/tell.test.js",
+  /* the three permanent-progression modules and the wiring that joins them to
+     the game: each one owns a save block, so a missing suite here is a save
+     migration nobody is asserting */
+  "tests/meta.test.js",
+  "tests/discipline-mastery.test.js",
+  "tests/leaderboard.test.js",
+  "tests/wiring.test.js",
 ];
 
 const failures = [];

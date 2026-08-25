@@ -36,12 +36,15 @@ module.exports = function (h) {
     ok(phase() === "MENU", "and on the K.O. screen");
   }
   {
-    // inside the technique list B still means "back to categories"
+    // the technique list is not behind a category any more - it IS the
+    // command menu, and left/right filter it without leaving the screen
     toDuel();
-    press("a");
-    ok(phase() === "TECH", "A opens the technique list", phase());
+    press("right");
+    ok(phase() === "CMD" && A.G.duel.cmdCat === 1,
+       "left and right filter the list in place", phase() + " tab " + A.G.duel.cmdCat);
+    A.exec("G.duel.ph=D.TECH;");
     press("b");
-    ok(phase() === "CMD", "B backs out to the categories, not the menu", phase());
+    ok(phase() === "CMD", "the old second step folds back into the one menu", phase());
   }
 
   section("how to fight is reachable from the fight");

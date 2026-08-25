@@ -53,14 +53,25 @@ const bios =
 const art = stripKeys(fs.readFileSync(SP + "art.txt", "utf8").trim(), "const ART=");
 
 const SRC=require("path").resolve(__dirname,"..","src")+"/";
-const MODULE_ORDER=["data/roster-tune.js","data/disciplines.js","data/matchups.js","data/techniques.js",
+const MODULE_ORDER=["data/roster-tune.js","data/disciplines.js","data/matchups.js","data/techniques.js","data/i18n.js",
+  "battle/style-meter.js","battle/resonance.js",
   "battle/effects.js","battle/order.js","battle/resolve.js","battle/position.js","battle/sequence.js","battle/intent.js","battle/ai.js",
-  "data/benefits.js","data/archetypes.js","progress/mastery.js","data/challenges.js","modes/daily.js","data/stories.js","ui/anim.js","progress/growth.js","progress/draft.js","modes/shop.js","progress/ranking/rank-table.js",
+  "battle/ai-adaptive.js","battle/ai-coach.js","battle/ai-commentary.js",
+  "data/benefits.js","data/archetypes.js","progress/mastery.js",
+  /* the two permanent progression axes sit beside mastery: meta.js reads no
+     other module at all, and discipline-mastery.js only touches DISCIPLINES /
+     TECH from inside function bodies, so both are load-order-insensitive. */
+  "progress/meta.js","progress/discipline-mastery.js","progress/infusions.js","progress/codex.js",
+  "data/challenges.js","modes/daily.js","modes/tower.js","modes/dojo.js","modes/endless-gauntlet.js","modes/weekly-mutator.js","modes/wagers.js","data/stories.js","data/narrative-events.js","ui/anim.js","progress/growth.js","progress/draft.js","progress/create-fighter.js","progress/deck-builder.js","modes/shop.js","progress/ranking/rank-table.js",
   "progress/ranking/ranking-service.js","progress/ranking/ranking-store.js",
-  "progress/save-backup.js","progress/cloud-save.js","progress/ton-connect.js",
+  "progress/save-backup.js","progress/cloud-save.js",
+  /* the daily board rides on the daily's seed and on cloud-save's config and
+     fetch helpers, so it loads after both of them */
+  "progress/leaderboard.js",
+  "progress/credit-ledger.js","progress/ton-connect.js","progress/ton-onchain.js","progress/p2p-webrtc.js","progress/replays.js","progress/ghost-battles.js",
   // the presentation layer loads last: it reads the fight, the fight never reads it
-  "ui/music.js","ui/matchup.js","ui/entrance.js","ui/results.js","modes/attract.js",
-  "ui/venue.js","ui/spectacle.js","ui/map-skin.js"];
+  "ui/music.js","ui/sfx.js","ui/combat-fx.js","ui/floating-feedback.js","ui/card-tooltip.js","ui/stat-radar.js","ui/settings-gui.js","ui/matchup.js","ui/entrance.js","ui/results.js","modes/attract.js",
+  "ui/venue.js","ui/spectacle.js","ui/map-skin.js","ui/replay-viewer.js","ui/codex-viewer.js","ui/trophy-room.js","ui/virtual-gamepad.js","ui/keybindings.js","ui/interactive-3d-bg.js"];
 const modules = MODULE_ORDER
   .map((m) => "/* ---- src/" + m + " ---- */\n" + fs.readFileSync(SRC + m, "utf8"))
   .join("\n");

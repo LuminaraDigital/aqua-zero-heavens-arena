@@ -80,8 +80,7 @@ module.exports = function (h) {
            "startDuel({p1:0,p1hp:200,p1pool:battlePool(0,9),oppFid:1,oppHp:200," +
            "oppPool:battlePool(1,9),oppLv:9,fromAdv:false,stage:3});");
     frames(700);
-    press("a");                       // category
-    press("a");                       // technique
+    press("a");                       // the row under the cursor - no category gate
     const chained = phase() === "CHAIN";
     ok(chained, "picking a technique offers a combination", phase());
     if (chained) {

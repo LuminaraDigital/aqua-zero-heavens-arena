@@ -32,12 +32,14 @@ function accuracyOf(d, side, foe, tech) {
   if (d.range === "MID") acc *= 1.06;
   // a drilled technique has been thrown ten thousand times - it finds home
   if (side.drill && side.drill[tech.id]) acc += 5 * side.drill[tech.id];
+  if (side && side.seals && side.seals[tech.id] === "SEAL_FLOW") acc += 12;
+  if (d && d.range === "LONG" && typeof hasResonance === "function" && side.techs && hasResonance(side.techs, "STRIKERS_HORIZON")) acc += 10;
   acc *= positionModsFor(d, side).acc;
   // the longer you are held down, the better your work back to the feet
   if ((tech.flags || []).indexOf("escape") >= 0) acc *= groundEscapeBonus(d);
   return Math.max(5, Math.min(99, acc));
 }
-function damageOf(d, side, foe, tech) {
+function damageOf(d, side, foe, tech, foeTech) {
   if (!tech.power) return 0;
   const mods = statusMods(side), disc = DISCIPLINES[tech.disc];
   let n = tech.power * (disc ? disc.bias.pow : 1);
@@ -46,6 +48,10 @@ function damageOf(d, side, foe, tech) {
   n *= mods.pow * (side.atkMul || 1);
   n *= positionModsFor(d, side).pow;    // room to work, or backed onto the ropes
   if (side.drill && side.drill[tech.id]) n *= 1 + 0.15 * side.drill[tech.id];
+  if (side && side.seals && side.seals[tech.id] === "SEAL_HEAVY") n *= 1.25;
+  if (side && side.seals && side.seals[tech.id] === "SEAL_COUNTER" && foeTech && foeTech.cls === "STRIKE") n *= 1.45;
+  if (d && d.range === "CLINCH" && typeof hasResonance === "function" && side.techs && hasResonance(side.techs, "DIRTY_BOXING")) n *= 1.15;
+  if (typeof hasResonance === "function" && side.techs && hasResonance(side.techs, "RUTHLESS_COMBAT") && (hasStatus(foe, "BLEEDING") || hasStatus(foe, "STUNNED") || hasStatus(foe, "WINDED"))) n *= 1.25;
   n /= Math.max(0.6, foe.defMul || 1);
   if (hasStatus(foe, "STUNNED")) n *= 1.3;                         // punish the rocked fighter
   if (tech.cls === "SUB" && (hasStatus(foe, "PINNED") || hasStatus(foe, "HELD"))) n *= 1.4;
@@ -154,7 +160,12 @@ function executeTechnique(d, side, foe, tech, foeTech, rnd) {
   if (side.freeNext && cost > 0) { cost = 0; side.freeNext = false; }
   side.stam = Math.max(0, side.stam - cost);
   ev.stam = cost;
-  if (side.stam <= 0) addStatus(side, "WINDED");
+  if (side.stam <= 0) {
+    addStatus(side, "WINDED");
+    if (typeof CombatEvents !== "undefined" && typeof CombatEvents.emit === "function") {
+      CombatEvents.emit("STAMINA_BREAK", { turn: d ? d.turn : 0, fighterName: (typeof FIGHTERS !== "undefined" && FIGHTERS[side.fid]) ? FIGHTERS[side.fid].name.split(" ")[0] : "" });
+    }
+  }
 
   /* GUARD is not thrown at anyone - it buys stamina and sets up the soak */
   if (tech.cls === "GUARD") {
@@ -176,17 +187,50 @@ function executeTechnique(d, side, foe, tech, foeTech, rnd) {
   if (R() * 100 > acc) { ev.whiff = true; return ev; }
 
   ev.hit = true;
-  let dmg = damageOf(d, side, foe, tech);
+  let dmg = damageOf(d, side, foe, tech, foeTech);
   /* fresh wraps: a handful of strikes hit harder and cannot be answered */
   const wrapped = side.edge && side.edge.hits > 0 && tech.cls === "STRIKE";
   if (wrapped) { dmg = Math.round(dmg * (side.edge.mul || 1.25)); side.edge.hits--; }
-  const gf = guardFactor(foe, foeTech, d);
+  let gf = guardFactor(foe, foeTech, d);
+  if (side && side.seals && side.seals[tech.id] === "SEAL_HEAVY" && gf < 1) {
+    gf = 1 - (1 - gf) * 0.50; // ignores 50% guard reduction
+  }
   if (gf < 1) { dmg = Math.max(1, Math.round(dmg * gf)); ev.blocked = true; }
   /* a parry answers back */
   if (foeTech && foeTech.cls === "GUARD" && foeTech.flags.indexOf("parry") >= 0 && R() < 0.5 &&
       !(wrapped && side.edge && side.edge.noParry)) {
     ev.counter = Math.max(2, Math.round(dmg * 0.5));
+    if (typeof CombatEvents !== "undefined" && typeof CombatEvents.emit === "function") {
+      CombatEvents.emit("COUNTER_HIT", { turn: d ? d.turn : 0, fighterName: (typeof FIGHTERS !== "undefined" && FIGHTERS[foe.fid]) ? FIGHTERS[foe.fid].name.split(" ")[0] : "" });
+    }
   }
+
+  // Octagon Predator resonance: extra impact on takedowns/throws
+  if (typeof hasResonance === "function" && side.techs && hasResonance(side.techs, "OCTAGON_PREDATOR") &&
+      (tech.cls === "THROW" || (tech.flags && tech.flags.indexOf("takedown") >= 0))) {
+    dmg += 12;
+    ev.predatorBonus = 12;
+  }
+
+  // Vampiric Leech Seal
+  if (side && side.seals && side.seals[tech.id] === "SEAL_VAMPIRE" && dmg > 0) {
+    const leech = Math.max(1, Math.round(dmg * 0.25));
+    side.hp = Math.min(side.maxhp || 100, side.hp + leech);
+    ev.leech = leech;
+  }
+
+  // Wind Flow Seal
+  if (side && side.seals && side.seals[tech.id] === "SEAL_FLOW") {
+    side.stam = Math.min(side.maxStam || 60, side.stam + 10);
+    ev.flowRefund = 10;
+  }
+
+  // Viper Venom Seal
+  if (side && side.seals && side.seals[tech.id] === "SEAL_VIPER" && R() * 100 < 75) {
+    const vst = tech.eff ? tech.eff.st : "BLEEDING";
+    if (addStatus(foe, vst)) ev.status = STATUS[vst] ? STATUS[vst].name : vst;
+  }
+
   ev.dmg = dmg;
 
   if (tech.eff && R() * 100 < tech.eff.ch) {
@@ -199,7 +243,12 @@ function executeTechnique(d, side, foe, tech, foeTech, rnd) {
      pressure ledger books anything */
   if (tech.flags.indexOf("reversal") >= 0) {
     const key = side === d.p ? "p" : "e";
-    if (swapCorner(d, key)) { ev.reversal = true; ev.posTo = d.pos; ev.cornered = d.cornered; }
+    if (swapCorner(d, key)) {
+      ev.reversal = true; ev.posTo = d.pos; ev.cornered = d.cornered;
+      if (typeof CombatEvents !== "undefined" && typeof CombatEvents.emit === "function") {
+        CombatEvents.emit("REVERSAL", { turn: d ? d.turn : 0, fighterName: (typeof FIGHTERS !== "undefined" && FIGHTERS[side.fid]) ? FIGHTERS[side.fid].name.split(" ")[0] : "" });
+      }
+    }
   }
   pressureShift(d, side, ev);   // sustained pressure walks them toward the ropes
   return ev;

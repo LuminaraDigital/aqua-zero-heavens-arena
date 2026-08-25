@@ -145,6 +145,9 @@ function mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y) {
   cx.fillStyle = pal.floorLo;
   cx.fillRect(X + inset, Y + ch - inset - 1, cw - inset * 2, 1);
   cx.fillRect(X + cw - inset - 1, Y + inset, 1, ch - inset * 2);
+  /* soft centre highlight for a polished tile look */
+  cx.fillStyle = alt ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.03)";
+  cx.fillRect(X + 4, Y + 4, cw - 8, ch - 8);
 }
 
 function mapPaintWallCell(cx, X, Y, cw, ch, pal) {

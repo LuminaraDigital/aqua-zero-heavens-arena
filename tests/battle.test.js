@@ -225,14 +225,13 @@ module.exports = function (h) {
     const f0 = d.p.focus;
     A.onKey("y");
     ok(d.readShown && d.p.focus === f0 - 1, "Y spends focus to read the opponent");
-    // walk the menu
+    // walk the menu. The categories are a filter now, not a gate: the command
+    // menu opens on the technique rows themselves, so A commits one.
+    const rows = A.menuTechsFor(d, d.p);
+    ok(rows.length > 0, "the menu opens on techniques, not categories", rows.length);
     A.onKey("down"); A.onKey("a");
-    ok(d.ph === A.D.TECH || d.ph === A.D.EXEC, "choosing a category opens its techniques", phase());
-    if (d.ph === A.D.TECH) {
-      const list = A.techsInCategory(d.p.fid, d.p.level, A.CATEGORIES[d.cmdCat].key, d.range);
-      ok(list.length > 0, "the category has techniques", list.length);
-      A.onKey("a");
-    }
+    ok(d.ph === A.D.CHAIN || d.ph === A.D.EXEC || d.ph === A.D.DEFEND || d.ph === A.D.JUGGLE,
+       "A throws the row under the cursor", phase());
     // picking a technique may now offer a combination first - B throws what
     // you have, which is the path a player who does not want to chain takes
     if (d.ph === A.D.CHAIN) {

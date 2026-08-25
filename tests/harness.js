@@ -54,6 +54,8 @@ module.exports = function boot(opts) {
     isNaN, parseInt, parseFloat, RegExp,
     setTimeout: () => 0, clearTimeout: () => {},
     requestAnimationFrame: () => 0,
+    btoa: (str) => Buffer.from(String(str), "binary").toString("base64"),
+    atob: (b64) => Buffer.from(String(b64), "base64").toString("binary"),
     matchMedia: () => ({ matches: false }),
     addEventListener: () => {},
     localStorage: {
@@ -130,6 +132,19 @@ module.exports = function boot(opts) {
     "attractSaveSeen", "attractReady", "attractHomeRanges", "attractOverlap", "attractPick",
     "attractChoose", "attractShouldExit",
     "optionRows", "menuPreview",
+    "SFX", "CombatFX", "FloatingFeedback", "TowerMode", "DojoMode", "CreateFighterMode",
+    "P2PNetwork", "ReplayEngine", "ReplayViewer", "TonOnchain", "VirtualGamepad", "Keybindings", "i18n",
+    "CardTooltip", "StatRadar", "SettingsGUI",
+    "StyleMeter", "STYLE_RANKS", "STYLE_TRIGGERS", "DEF_STYLE_STATE", "styleGradeForScore", "evaluateStyleEvent",
+    "Resonance", "RESONANCE_PAIRS", "countDeckDisciplines", "getActiveResonances", "hasResonance",
+    "Infusions", "SEALS", "SEAL_IDS", "getTechSeal", "applySealToTech", "removeSealFromTech", "sealCandidates",
+    "Codex", "CODEX_TIERS", "DEF_CODEX", "codexNormalize", "codexTierFor", "codexRecordUse", "codexDisciplineStats", "codexTotalStats",
+    "EndlessGauntlet", "ENDLESS_CONFIG", "DEF_ENDLESS_STATE", "endlessOpponentForWave", "endlessAdvanceWave",
+    "WeeklyMutator", "WEEKLY_MUTATORS", "getWeekNumber", "getWeeklyMutator",
+    "Wagers", "BOUNTY_TEMPLATES", "generateBountiesForFight", "evaluateBountyResult",
+    "GhostBattles", "GHOST_MAGIC", "GHOST_MAGIC_V1", "GHOST_MAGIC_V2", "encodeGhostBuild", "decodeGhostBuild", "createGhostCombatant", "extractStyleVector", "styleVectorToWeights",
+    "AdaptiveAI", "AICoach", "AICommentary", "CombatEvents",
+    "CodexViewer", "TrophyRoom", "Interactive3DBG", "THEMES_3D",
   ];
   const tail = "\n;globalThis.__api={" + EXPORTS.map((k) => k + ":typeof " + k + "!==\"undefined\"?" + k + ":undefined").join(",") +
     ",getSave:()=>SAVE,setSave:(v)=>{SAVE=v;},run:(src)=>eval(src),store:null};";

@@ -55,7 +55,7 @@ const VENUES = {
     voidBot: "#07080a",
     gel: "rgba(34,120,180,.07)",
     crowd: "rgba(255,236,190,1)",
-    rim: "rgba(120,180,220,.18)",
+    rim: "rgba(120,180,220,$A)",
     scrim: [
       { t: 0, c: "rgba(5,6,9,.74)" },
       { t: 0.34, c: "rgba(5,6,9,.32)" },
@@ -75,7 +75,7 @@ const VENUES = {
     voidBot: "#0a0806",
     gel: "rgba(180,120,40,.08)",
     crowd: "rgba(220,190,140,1)",
-    rim: "rgba(200,140,60,.16)",
+    rim: "rgba(200,140,60,$A)",
     scrim: [
       { t: 0, c: "rgba(12,8,4,.76)" },
       { t: 0.34, c: "rgba(12,8,4,.34)" },
@@ -95,7 +95,7 @@ const VENUES = {
     voidBot: "#0a1018",
     gel: "rgba(60,100,140,.08)",
     crowd: "rgba(180,210,240,1)",
-    rim: "rgba(140,200,255,.20)",
+    rim: "rgba(140,200,255,$A)",
     scrim: [
       { t: 0, c: "rgba(8,14,22,.70)" },
       { t: 0.28, c: "rgba(8,14,22,.28)" },
@@ -115,7 +115,7 @@ const VENUES = {
     voidBot: "#070406",
     gel: "rgba(120,10,20,.18)",
     crowd: "rgba(200,80,70,1)",
-    rim: "rgba(224,58,47,.22)",
+    rim: "rgba(224,58,47,$A)",
     scrim: [
       { t: 0, c: "rgba(18,4,8,.78)" },
       { t: 0.34, c: "rgba(18,4,8,.36)" },
@@ -135,7 +135,7 @@ const VENUES = {
     voidBot: "#060a0e",
     gel: "rgba(40,140,160,.08)",
     crowd: "rgba(160,220,230,1)",
-    rim: "rgba(34,211,238,.20)",
+    rim: "rgba(34,211,238,$A)",
     scrim: [
       { t: 0, c: "rgba(4,10,14,.72)" },
       { t: 0.34, c: "rgba(4,10,14,.30)" },
@@ -865,6 +865,32 @@ function venuePaintDim(cx, W, H, dim) {
   cx.fillRect(0, 0, W, H);
 }
 
+function venuePaintBloom(cx, W, H, colour, intensity) {
+  const a = venueClamp01(intensity == null ? 0.12 : intensity);
+  if (a <= 0.01) return;
+  cx.save();
+  cx.globalCompositeOperation = "screen";
+  const g = cx.createRadialGradient(W * 0.5, H * 0.45, 0, W * 0.5, H * 0.45, Math.max(W, H) * 0.65);
+  g.addColorStop(0, colour.replace("$A", (a * 1.2).toFixed(3)));
+  g.addColorStop(0.5, colour.replace("$A", (a * 0.35).toFixed(3)));
+  g.addColorStop(1, colour.replace("$A", "0"));
+  cx.fillStyle = g;
+  cx.fillRect(0, 0, W, H);
+  cx.restore();
+}
+
+function venuePaintReflection(cx, W, H, yBase, alpha) {
+  const a = venueClamp01(alpha == null ? 0.08 : alpha);
+  if (a <= 0.01) return;
+  cx.save();
+  cx.globalAlpha = a;
+  cx.fillStyle = "rgba(255,255,255,.03)";
+  cx.beginPath();
+  cx.ellipse(W * 0.5, yBase, W * 0.18, W * 0.045, 0, 0, Math.PI * 2);
+  cx.fill();
+  cx.restore();
+}
+
 function venueArenaReady(img) {
   return !!(img && img.complete && img.naturalWidth > 0);
 }
@@ -940,6 +966,8 @@ function paintVenue(cx, W, H, venue, opts) {
   }
   venuePaintDim(cx, w, h, o.dim);
   venuePaintSpot(cx, w, h, o.spot);
+  venuePaintBloom(cx, w, h, v.rim || "rgba(120,180,220,$A)", 0.18);
+  venuePaintReflection(cx, w, h, g.nearY - 4, 0.10);
   venuePaintVignette(cx, w, h, o.vignette);
 }
 
@@ -1007,6 +1035,7 @@ function paintTitleAtmosphere(cx, W, H, venue, opts) {
 
   const spot = o.spot || { x: w * 0.5, r: Math.min(w, h) * 0.42, pulse: 0 };
   venuePaintSpot(cx, w, h, spot);
+  venuePaintBloom(cx, w, h, "rgba(120,180,220,$A)", 0.14);
   venuePaintDim(cx, w, h, o.dim);
   venuePaintVignette(cx, w, h, o.vignette == null ? 0.4 : o.vignette);
 }

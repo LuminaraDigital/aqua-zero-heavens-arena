@@ -105,6 +105,9 @@ function spectacleStep(list) {
    --------------------------------------------------------------------- */
 function spectaclePaint(cx, list) {
   if (!cx || !list || !list.length) return;
+  // Wrap so fillStyle/strokeStyle/lineWidth/globalAlpha set below don't leak
+  // into whatever the caller draws next this frame.
+  cx.save();
   const lifeMax = SPECTACLE_CONFIG.burst.life;
   for (let i = 0; i < list.length; i++) {
     const p = list[i];
@@ -112,20 +115,30 @@ function spectaclePaint(cx, list) {
     cx.globalAlpha = a;
     cx.fillStyle = p.c;
     cx.strokeStyle = p.c;
-    if (p.kind === "spark") {
+    if (p.kind === "spark" || p.kind === "streak") {
+      const len = p.kind === "streak" ? 2.2 : 0.6;
+      const width = p.kind === "streak" ? 2.2 : 1 + a;
       cx.beginPath();
       cx.moveTo(p.x, p.y);
-      cx.lineTo(p.x - p.vx * 0.6, p.y - p.vy * 0.6);
-      cx.lineWidth = 1 + a;
+      cx.lineTo(p.x - p.vx * len, p.y - p.vy * len);
+      cx.lineWidth = width;
       cx.stroke();
-      /* tiny head so a spark still reads when velocity is near zero */
-      cx.fillRect(p.x - 0.5, p.y - 0.5, 1.5, 1.5);
+      cx.fillRect(p.x - 0.6, p.y - 0.6, 1.2, 1.2);
+    } else if (p.kind === "glow") {
+      const s = 2 + a * 5;
+      const g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, s);
+      g.addColorStop(0, p.c);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      cx.fillStyle = g;
+      cx.beginPath();
+      cx.arc(p.x, p.y, s, 0, Math.PI * 2);
+      cx.fill();
     } else {
       const s = 2 + a * 4;
       cx.fillRect(p.x - s * 0.5, p.y - s * 0.5, s, s);
     }
   }
-  cx.globalAlpha = 1;
+  cx.restore();
 }
 
 /* ---------------------------------------------------------------------
@@ -144,7 +157,10 @@ function spectacleImpact(list, kind, x, y, facing) {
     const cone = (Math.random() - 0.5) * Math.PI * 0.9;
     const ang = (fx > 0 ? 0 : Math.PI) + cone;
     const mag = spec.speed * (0.5 + Math.random() * 0.8);
-    const isSpark = Math.random() < spec.spark;
+    const roll = Math.random();
+    let kindOut = "dust";
+    if (roll < spec.spark * 0.65) kindOut = "spark";
+    else if (roll < spec.spark) kindOut = "streak";
     list.push({
       x: x + (Math.random() - 0.5) * 6,
       y: y + (Math.random() - 0.5) * 6,
@@ -152,9 +168,13 @@ function spectacleImpact(list, kind, x, y, facing) {
       vy: Math.sin(ang) * mag * 0.55 - Math.random() * spec.speed * 0.4,
       l: spec.life * (0.65 + Math.random() * 0.55),
       c: spec.colour,
-      kind: isSpark ? "spark" : "dust",
+      kind: kindOut,
     });
     added++;
+  }
+  /* a soft glow core for heavier impacts */
+  if (kind === "ko" || kind === "kick" || kind === "throw") {
+    list.push({ x: x, y: y, vx: 0, vy: 0, l: spec.life * 0.6, c: spec.colour, kind: "glow" });
   }
   /* KO gets a second dust ring so the finish reads heavier than a strike */
   if (kind === "ko") {

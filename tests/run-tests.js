@@ -29,6 +29,19 @@ const SUITES = {
   attract: "./attract.test",
   cloud: "./cloud.test",
   ton: "./ton.test",
+  meta: "./meta.test",
+  discmastery: "./discipline-mastery.test",
+  leaderboard: "./leaderboard.test",
+  wiring: "./wiring.test",
+  expansion: "./expansion.test",
+  ui_enhancements: "./ui-enhancements.test",
+  gared: "./gared-features.test",
+  ai_systems: "./ai-systems.test",
+  credit_ledger: "./credit-ledger.test",
+  deck_builder: "./deck-builder.test",
+  boss_phases: "./boss-phases.test",
+  narrative_events: "./narrative-events.test",
+  interactive_3d_bg: "./interactive-3d-bg.test",
 };
 
 const args = process.argv.slice(2);

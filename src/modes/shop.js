@@ -369,6 +369,14 @@ function drillTicket(run, techId) {
            desc: "+15% power, +5 accuracy" + (owned ? " (tier " + (owned + 1) + ")" : ""),
            price: Math.round(SHOP_CONFIG.drillPrice * (1 + 0.55 * owned) * priceScale(run && run.stage)) };
 }
+function sealTicket(run, techId, sealId) {
+  const t = (typeof TECH !== "undefined" && TECH[techId]) || { name: techId };
+  const s = (typeof SEALS !== "undefined" && SEALS[sealId]) || { name: sealId, price: 70 };
+  return { kind: "SEAL", id: "svc_seal_" + sealId, target: techId, sealId: sealId, tag: "SEAL",
+           name: s.name + ": " + t.name,
+           desc: s.desc,
+           price: Math.round(s.price * priceScale(run && run.stage)) };
+}
 
 /* ---------------------------------------------------------------------
    STOCK
@@ -539,6 +547,10 @@ function buyItem(run, item) {
     case "DRILL":
       if (drillCandidates(run).indexOf(item.target) < 0) return { ok: false, reason: "no_drill" };
       break;
+    case "SEAL":
+      if (!item.target || (typeof TECH !== "undefined" && !TECH[item.target])) return { ok: false, reason: "no_item" };
+      if (!item.sealId || (typeof SEALS !== "undefined" && !SEALS[item.sealId])) return { ok: false, reason: "no_item" };
+      break;
     default:
       return { ok: false, reason: "unknown_kind" };
   }
@@ -581,6 +593,10 @@ function buyItem(run, item) {
     case "DRILL":
       if (!run.drilled) run.drilled = {};
       run.drilled[item.target] = (run.drilled[item.target] || 0) + 1;
+      break;
+    case "SEAL":
+      if (!run.seals) run.seals = {};
+      run.seals[item.target] = item.sealId;
       break;
   }
   item.sold = true;

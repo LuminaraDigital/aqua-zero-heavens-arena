@@ -15,9 +15,9 @@ const STATUS_VALUE = { STUNNED: 16, WINDED: 12, BLEEDING: 10, OFF_BALANCE: 8,
 
 /* A gameplan reweights what this fighter cares about. No gameplan means the
    old, purely percentage-driven brain. */
-function scoreTechnique(d, side, foe, tech, noise, rnd) {
+function scoreTechnique(d, side, foe, tech, noise, rnd, optWeights) {
   const R = rnd || Math.random;
-  const w = side.ai || null;
+  const w = optWeights !== undefined ? optWeights : (side.ai || null);
   let s = 0;
   const fit = rangeFit(tech.range, d.range);
 
@@ -103,7 +103,17 @@ function scoreTechnique(d, side, foe, tech, noise, rnd) {
 
 function aiChooseTechnique(d, side, foe, opts) {
   opts = opts || {};
-  const noise = (opts.noise === undefined ? 18 : opts.noise) * ((side.ai && side.ai.noise) || 1);
+  let weights = (opts && opts.weights) || side.ai || null;
+  if (d && d.adaptiveTracker && typeof AdaptiveAI !== "undefined" && typeof AdaptiveAI.adaptWeights === "function") {
+    const baseW = weights || (typeof archetypeOf === "function" && typeof archetypeFor === "function" ? archetypeOf(archetypeFor(side.fid)).weights : null);
+    if (baseW) {
+      weights = AdaptiveAI.adaptWeights(baseW, d.adaptiveTracker, {
+        intensity: opts.adaptiveIntensity || 1.0,
+        veteran: (d.stage && d.stage >= 5) || (d.towerFloor && d.towerFloor >= 50),
+      });
+    }
+  }
+  const noise = (opts.noise === undefined ? 18 : opts.noise) * ((weights && weights.noise) || 1);
   const rnd = opts.rnd || Math.random;
   // a full meter gets cashed in
   if (side.sig && side.sup >= SUP_MAX && rnd() < (opts.superChance === undefined ? 0.75 : opts.superChance))
@@ -111,7 +121,7 @@ function aiChooseTechnique(d, side, foe, opts) {
   let best = null, bs = -1e9;
   side.techs.forEach((id) => {
     const t = TECH[id];
-    const sc = scoreTechnique(d, side, foe, t, noise, rnd);
+    const sc = scoreTechnique(d, side, foe, t, noise, rnd, weights);
     if (sc > bs) { bs = sc; best = t; }
   });
   return { tech: best || TECH.basic_guard, signature: false };

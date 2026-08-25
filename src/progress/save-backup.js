@@ -396,12 +396,28 @@ function sanitizeSavePayload(save) {
     run: run,
     ranking: ranking,
     rec: {},
+    /* The three permanent-progression blocks. They are sanitised HERE rather
+       than by each caller, because every path that reaches applyImportedSave()
+       - options-screen IMPORT SAVE, cloud pull, cloud push - runs through this
+       function, and a block this whitelist drops is a block persist() then
+       writes away as lost. Each module owns its own total normaliser (junk in,
+       clean block out, never a throw), which is exactly the posture a hostile
+       import needs. The typeof guards keep save-backup.js standalone-safe:
+       nemNormalize is declared later in the page, so it is only ever resolved
+       at call time, never at module scope. */
+    meta: typeof metaNormalize === "function" ? metaNormalize(save.meta) : null,
+    discMastery: typeof discMasteryNormalize === "function" ? discMasteryNormalize(save.discMastery) : {},
+    nem: typeof nemNormalize === "function" ? nemNormalize(save.nem) : null,
+    codex: typeof codexNormalize === "function" ? codexNormalize(save.codex) : null,
+    customFighters: Array.isArray(save.customFighters) ? save.customFighters.filter(isPlainObject).slice(0, 10) : [],
+    recentReplays: Array.isArray(save.recentReplays) ? save.recentReplays.filter(isPlainObject).slice(0, 10) : [],
+    weekly: isPlainObject(save.weekly) && !hasDangerousKey(save.weekly) ? save.weekly : null,
     fr: sanitizeFighterRecords(save.fr),
   };
 
   if (isPlainObject(save.rec) && !hasDangerousKey(save.rec)) {
     const rec = {};
-    for (const k of ["duels", "wins", "losses", "perfect", "stages", "bestSurv", "ngplus"]) {
+    for (const k of ["duels", "wins", "losses", "perfect", "stages", "bestSurv", "bestEndless", "ngplus"]) {
       const v = save.rec[k];
       if (typeof v === "number" && isFinite(v) && v >= 0) rec[k] = v | 0;
     }
