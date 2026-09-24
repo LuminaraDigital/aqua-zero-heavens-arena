@@ -128,8 +128,28 @@ const RESULT_CONFIG = {
     dense: ["dailywin", "dailyloss", "rankwin", "rankloss"],
     /* no fight happened - no art to raise, no stat line to read */
     noFight: ["steps"],
+    /* A PATROL IS NOT A FIGHT NIGHT. One committed exchange against a
+       silhouette got the same two-second ceremony as a rival: the method
+       line, the grade slam, the stat prompt, the brag card and a parade of
+       titles. By weight of encounter, the beats a result is allowed:
+       everything not listed here plays the full order above. */
+    byWeight: { patrol: ["payout", "prompt"] },
   },
 };
+
+/* the three weights a fight can be fought at, lightest first */
+const RESULT_WEIGHTS = ["patrol", "rival", "boss"];
+/* the weight a result was fought at - endDuel stamps result.encounter from
+   the duel; anything unstamped is a full bout, so every other mode's
+   result screen is exactly what it was */
+function resultWeight(result) {
+  const w = result && typeof result === "object" ? result.encounter : null;
+  return RESULT_WEIGHTS.indexOf(w) >= 0 ? w : "rival";
+}
+/* a short card rather than the ceremony */
+function resultIsShort(result) {
+  return !!RESULT_CONFIG.ceremony.byWeight[resultWeight(result)];
+}
 
 /* the method tokens, so nothing downstream has to spell them */
 const RESULT_METHODS = {
@@ -326,6 +346,12 @@ function fightStatRows(stats, opts) {
   const perfectGuards = Math.round(resNum(st.perfectGuards));
   const combo = Math.round(resNum(st.comboMax));
   const dom = dominantRange(st.ranges, turns);
+  const zd = st.zonesDealt || {};
+  const zHead = Math.round(resNum(zd.head));
+  const zBody = Math.round(resNum(zd.body));
+  const zLegs = Math.round(resNum(zd.legs));
+  const zTotal = zHead + zBody + zLegs;
+  const cutDealt = Math.round(resNum(st.cutDealt));
 
   const rows = [
     { key: "dealt", label: "DAMAGE DEALT", n: dealt, value: String(dealt),
@@ -352,6 +378,25 @@ function fightStatRows(stats, opts) {
       value: dom.key ? dom.label + "  " + resPct(dom.share) + "%" : "-",
       bar: dom.key ? dom.share : null },
   ];
+
+  /* Zone and cut meters appear when recorded */
+  if (zTotal > 0) {
+    rows.splice(2, 0,
+      { key: "head", label: "HEAD DAMAGE", n: zHead, value: String(zHead),
+        bar: resShare(zHead, zTotal) },
+      { key: "body", label: "BODY DAMAGE", n: zBody, value: String(zBody),
+        bar: resShare(zBody, zTotal) },
+      { key: "legs", label: "LEG DAMAGE", n: zLegs, value: String(zLegs),
+        bar: resShare(zLegs, zTotal) }
+    );
+  }
+  if (cutDealt > 0) {
+    const at = zTotal > 0 ? 5 : 2;
+    rows.splice(at, 0,
+      { key: "cut", label: "CUT DAMAGE", n: cutDealt, value: String(cutDealt),
+        bar: resShare(cutDealt, Math.max(cutDealt, 40)) }
+    );
+  }
 
   /* a striker's fight has no submissions and a boxing match has no air
      combo - on a compact panel those rows are three lines of nothing */
@@ -463,13 +508,16 @@ function ceremonyBeats(result, stats, opts) {
   /* a stat line is worth showing only if a fight actually generated one -
      a zero-turn block is a synthetic result, not a quiet fight */
   const hasStats = fought && !!st && Math.round(resNum(st.turns)) > 0;
+  const weight = resultWeight(result);
+  const allowed = C.byWeight[weight] || null;
+  const may = (id) => !allowed || allowed.indexOf(id) >= 0;
 
   const show = {
-    art: fought && o.art !== false,
-    method: true,
-    grade: hasStats && o.grade !== false,
-    stats: hasStats && o.stats !== false,
-    payout: fought && o.payout !== false,
+    art: fought && o.art !== false && may("art"),
+    method: may("method"),
+    grade: hasStats && o.grade !== false && may("grade"),
+    stats: hasStats && o.stats !== false && may("stats"),
+    payout: fought && o.payout !== false && may("payout"),
     prompt: true,
   };
 
@@ -500,6 +548,9 @@ function ceremonyBeats(result, stats, opts) {
        reads this to decide whether the panel goes inline or on a tab */
     dense: C.dense.indexOf(kind) >= 0,
     hasStats,
+    /* a patrol's short card: the renderer draws the compact form and the
+       stat tab, grade and brag card stay off the screen */
+    weight, short: !!allowed,
     f: 0, fired: {}, done: false,
   };
 }

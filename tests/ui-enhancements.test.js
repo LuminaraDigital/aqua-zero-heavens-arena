@@ -94,4 +94,111 @@ module.exports = function (h) {
   SettingsGUI.startRebinding("attack", "combat");
   SettingsGUI.handleKeyEvent("Escape");
   h.ok(SettingsGUI.getRebindState().active === false, "Rebinding cancelled on Escape");
+
+  // 7. CardRenderer Tangible Cards, Hand Layout, Stat Chevrons & Status Badges
+  const CardRenderer = h.api.CardRenderer || require("../src/ui/card-renderer");
+  h.ok(typeof CardRenderer === "object", "CardRenderer object should be defined");
+  h.ok(typeof CardRenderer.paintCard === "function", "CardRenderer.paintCard is function");
+  h.ok(typeof CardRenderer.paintCardHand === "function", "CardRenderer.paintCardHand is function");
+  h.ok(typeof CardRenderer.paintStatStages === "function", "CardRenderer.paintStatStages is function");
+  h.ok(typeof CardRenderer.paintStatusBadges === "function", "CardRenderer.paintStatusBadges is function");
+
+  // Attack Height classification
+  const highMove = { id: "mt_head_kick", name: "Head Kick", range: "LONG", cls: "STRIKE", flags: ["head", "power"] };
+  const midMove = { id: "cross", name: "Cross", range: "MID", cls: "STRIKE", flags: [] };
+  const lowMove = { id: "low_kick", name: "Low Kick", range: "LONG", cls: "STRIKE", flags: ["leg"] };
+  const specMove = { id: "high_guard", name: "High Guard", range: "ANY", cls: "GUARD", flags: ["block"] };
+
+  h.ok(CardRenderer.getAttackHeight(highMove) === "HIGH", "Head kick classified as HIGH");
+  h.ok(CardRenderer.getAttackHeight(midMove) === "MID", "Cross classified as MID");
+  h.ok(CardRenderer.getAttackHeight(lowMove) === "LOW", "Low kick classified as LOW");
+  h.ok(CardRenderer.getAttackHeight(specMove) === "SPECIAL", "Guard move classified as SPECIAL");
+
+  // Keyword tags extraction
+  const counterMove = { id: "check_hook", name: "Check Hook", prio: 1, flags: ["counter"] };
+  const bleedMove = { id: "horiz_elbow", name: "Horizontal Elbow", eff: { st: "BLEEDING", ch: 35 }, flags: ["cut"] };
+  const stunMove = { id: "lead_hook", name: "Lead Hook", eff: { st: "STUNNED", ch: 12 }, flags: [] };
+  const launchMove = { id: "rear_upper", name: "Rear Uppercut", flags: ["launcher"] };
+
+  const counterKw = CardRenderer.getKeywords(counterMove);
+  h.ok(counterKw.some(function(k) { return k.label === "Counter"; }), "Counter keyword extracted");
+
+  const bleedKw = CardRenderer.getKeywords(bleedMove);
+  h.ok(bleedKw.some(function(k) { return k.label === "Bleed"; }), "Bleed keyword extracted");
+
+  const stunKw = CardRenderer.getKeywords(stunMove);
+  h.ok(stunKw.some(function(k) { return k.label === "Stun"; }), "Stun keyword extracted");
+
+  const launchKw = CardRenderer.getKeywords(launchMove);
+  h.ok(launchKw.some(function(k) { return k.label === "Launcher"; }), "Launcher keyword extracted");
+
+  // Canvas paint mock verification
+  const mockCtx = {
+    save: function() {},
+    restore: function() {},
+    beginPath: function() {},
+    closePath: function() {},
+    moveTo: function() {},
+    lineTo: function() {},
+    fillRect: function() {},
+    strokeRect: function() {},
+    fillText: function() {},
+    strokeText: function() {},
+    arc: function() {},
+    stroke: function() {},
+    fill: function() {},
+    measureText: function() { return { width: 40 }; },
+    createLinearGradient: function() { return { addColorStop: function() {} }; },
+    createRadialGradient: function() { return { addColorStop: function() {} }; },
+    transform: function() {},
+    translate: function() {},
+  };
+
+  CardRenderer.paintCard(mockCtx, 10, 10, 120, 168, "jab", { selected: true, pointCost: 4, comboIndex: 1 });
+  h.ok(true, "CardRenderer.paintCard rendered without error");
+
+  const handCards = ["jab", "cross", "lead_hook", "switch_kick", "high_guard"];
+  CardRenderer.paintCardHand(mockCtx, 20, 300, handCards, 1, { hoveredIndex: 0, comboSequence: [0, 1] });
+  h.ok(true, "CardRenderer.paintCardHand rendered 5-card hand without error");
+
+  CardRenderer.paintStatStages(mockCtx, 20, 100, { atk: 2, def: -1, spd: 1, acc: 0 });
+  h.ok(true, "CardRenderer.paintStatStages rendered stat stages without error");
+
+  CardRenderer.paintStatusBadges(mockCtx, 20, 140, { BLEEDING: { turns: 2 }, STUNNED: { turns: 1 }, OFF_BALANCE: { turns: 1 } });
+  h.ok(true, "CardRenderer.paintStatusBadges rendered status badges with timers without error");
+
+  // 8. Spectacle CRT Filter & Arcade Announcer Callout Banners
+  const Spectacle = h.api.Spectacle || require("../src/ui/spectacle");
+  h.ok(typeof Spectacle.paintCRTFilter === "function", "Spectacle.paintCRTFilter is function");
+  h.ok(typeof Spectacle.paintArcadeBanner === "function", "Spectacle.paintArcadeBanner is function");
+
+  Spectacle.paintCRTFilter(mockCtx, 960, 540, 0.4);
+  h.ok(true, "paintCRTFilter rendered without error");
+
+  const callouts = ["ROUND 1 - FIGHT!", "COUNTER HIT!", "GUARD CRUSH!", "GREAT REVERSAL!", "PERFECT KO!"];
+  callouts.forEach(function(c) {
+    Spectacle.paintArcadeBanner(mockCtx, 960, 540, c, "TACTICAL ADVANTAGE", { alpha: 1.0 });
+  });
+  h.ok(true, "paintArcadeBanner rendered all announcer callouts without error");
+
+  // 9. DeckBuilder Enhanced Analytics & Vault
+  const DeckBuilder = h.api.DeckBuilder || require("../src/progress/deck-builder");
+  const sampleLoadout = [
+    "kuzushi", "guard_pull", "basic_close", "head_control", "basic_tieup", "switch_step",
+    "apkubi", "juchum_seogi", "kkoa_seogi", "high_guard", "plum_clinch", "lw_shell"
+  ];
+  const dbStats = DeckBuilder.getDeckStats(sampleLoadout);
+  h.ok(dbStats.count === 12, "Deck stats calculates count correctly");
+  h.ok(dbStats.cost > 0 && dbStats.cost <= 100, "Deck stats calculates cost within 100 PTS");
+  h.ok(dbStats.ranges.MID > 0, "Deck stats includes range distribution");
+  h.ok(dbStats.staminaCurve.low >= 0, "Deck stats includes stamina curve histogram");
+  h.ok(dbStats.isLegal === true, "Sample deck verified legal in stats");
+
+  const vaultCards = DeckBuilder.getVaultCards({ discipline: "boxing", search: "jab" });
+  h.ok(vaultCards.length > 0, "Vault filters cards by discipline and search");
+  h.ok(vaultCards[0].pointCost !== undefined, "Vault cards include point cost");
+
+  const defDeck = DeckBuilder.getDefaultDeck(0);
+  h.ok(Array.isArray(defDeck) && defDeck.length >= 12, "getDefaultDeck returns valid roster deck");
 };
+

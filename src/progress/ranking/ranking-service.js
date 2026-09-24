@@ -58,22 +58,46 @@ function pointsToNextRank(points) {
   return n ? Math.max(0, +(n.threshold - points).toFixed(2)) : 0;
 }
 
-function calculatePointsExchange(winnerRank, loserRank, matchType) {
+function calculatePointsExchange(winnerRank, loserRank, matchType, pointScale) {
   const cfg = RANK_CONFIG;
   const gap = Math.min(3, Math.abs(winnerRank.index - loserRank.index));
   const upset = winnerRank.index < loserRank.index;
   const factor = upset ? cfg.upsetFactor[gap] : cfg.gapFactor[gap];
   const mult = cfg.matchTypeMultiplier[matchType || "ranked"];
   const modeMult = mult === undefined ? 1 : mult;
+  const scale = (typeof pointScale === "number" && isFinite(pointScale) && pointScale > 0)
+    ? pointScale : 1;
 
-  let winnerGain = cfg.base * factor * modeMult;
+  let winnerGain = cfg.base * factor * modeMult * scale;
+  // Ladder Leapfrog Displacement: Major upsets (2+ ranks higher) grant an acceleration bonus
+  if (upset && gap >= 2) {
+    winnerGain = Math.min(cfg.maxGain, winnerGain * (1 + 0.15 * gap));
+  }
   winnerGain = Math.max(0, Math.min(cfg.maxGain, winnerGain));
 
   let loserLoss = winnerGain * cfg.lossRatio;
   if (loserRank.index <= cfg.noviceShieldIndex) loserLoss *= cfg.noviceLossRatio;
   loserLoss = Math.max(0, Math.min(cfg.maxLoss, loserLoss));
 
-  return { winnerGain: +winnerGain.toFixed(3), loserLoss: +loserLoss.toFixed(3), gap, upset, modeMult };
+  return { winnerGain: +winnerGain.toFixed(3), loserLoss: +loserLoss.toFixed(3), gap, upset, modeMult, pointScale: scale };
+}
+
+/* Performance contract purse calculation adapted from contractNegotiation.js:
+   - 3+ win streak bonus: +50% multiplier
+   - Stoppage finish bonus (KO or Submission): +30% multiplier
+*/
+function calculatePerformancePurse(basePurse, streak, method) {
+  let mult = 1.0;
+  if ((streak || 0) >= 3) mult += 0.50;
+  const m = String(method || "").toLowerCase();
+  const isStoppage = m.indexOf("ko") >= 0 || m.indexOf("knockout") >= 0 || m.indexOf("sub") >= 0 || m.indexOf("tapout") >= 0;
+  if (isStoppage) mult += 0.30;
+  return {
+    purse: Math.round((basePurse || 0) * mult),
+    multiplier: +mult.toFixed(2),
+    streakBonus: (streak || 0) >= 3,
+    finishBonus: isStoppage,
+  };
 }
 
 /* points can never fall out of a dan grade once it has been earned */
@@ -89,6 +113,7 @@ function newPlayerRanking(playerId) {
   return {
     playerId, promotionPoints: 0, rankIndex: 0, peakRankIndex: 0,
     wins: 0, losses: 0, totalMatches: 0, lastRankChangeAt: 0, streak: 0,
+    bestStreak: 0,
   };
 }
 const rankOf = (ranking) => getRankForPoints(ranking.promotionPoints);
@@ -114,7 +139,7 @@ function RankingService(store, now) {
     meta = meta || {};
     const w = get(winnerId), l = get(loserId);
     const wRank = rankOf(w), lRank = rankOf(l);
-    const ex = calculatePointsExchange(wRank, lRank, meta.matchType);
+    const ex = calculatePointsExchange(wRank, lRank, meta.matchType, meta.pointScale);
 
     w.promotionPoints = applyPointDelta(w, ex.winnerGain);
     l.promotionPoints = applyPointDelta(l, -ex.loserLoss);
@@ -122,6 +147,7 @@ function RankingService(store, now) {
     w.totalMatches++; l.totalMatches++;
     w.streak = Math.max(1, (w.streak || 0) + 1);
     l.streak = Math.min(-1, (l.streak || 0) - 1);
+    if (w.streak > (w.bestStreak || 0)) w.bestStreak = w.streak;
 
     const wAfter = rankOf(w), lAfter = rankOf(l);
     w.rankIndex = wAfter.index; l.rankIndex = lAfter.index;

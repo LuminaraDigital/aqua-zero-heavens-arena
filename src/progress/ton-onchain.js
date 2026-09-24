@@ -113,6 +113,9 @@ const TonOnchain = {
         // Offline / Dual-mode fallback via CreditLedger
         if (typeof CreditLedger !== "undefined") {
             CreditLedger.deposit(100, "10th Dan Promotion Grandmaster Reward", { playerId: playerId, rank: newRank, payload: payloadBoc });
+            if (typeof CreditLedger.depositGlory === "function") {
+                CreditLedger.depositGlory(50, "10th Dan Glory Achievement", { rank: newRank });
+            }
         }
         return { ok: true, onChain: false, offlineCertified: true, payload: payloadBoc };
     },
@@ -146,6 +149,9 @@ const TonOnchain = {
         // Offline / Dual-mode fallback via CreditLedger
         if (typeof CreditLedger !== "undefined") {
             CreditLedger.deposit(50 * (beltLevel || 1), "Mastery Belt Achieved", { playerId: playerId, beltLevel: beltLevel });
+            if (typeof CreditLedger.depositGlory === "function") {
+                CreditLedger.depositGlory(10 * (beltLevel || 1), "Mastery Belt Glory", { beltLevel: beltLevel });
+            }
         }
         return { ok: true, onChain: false, offlineCertified: true, beltLevel: beltLevel };
     },

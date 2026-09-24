@@ -1,7 +1,7 @@
 # Aqua Zero Heavens Arena
 
-AGPLv3 open-source card arena. Play offline from a GitHub download. Optional
-[TON](https://docs.ton.org/) wallet identity via [TON Connect](https://docs.ton.org/applications/ton-connect/overview).
+AGPLv3 open-source card arena. Play offline from a GitHub download. No account,
+no server, no wallet required — and none of those are on the default path.
 
 ## License
 
@@ -27,53 +27,67 @@ npm test
 npm run ci
 ```
 
-## TON (decentralized path)
+## Shelved: TON, Supabase, P2P WebRTC
 
-Primary product direction: **local game + TON wallet**, not a hosted SaaS backend.
+These three were built and are **not** the product direction. The game is a
+local, offline, single-file arena; identity, cloud sync and networking are not
+part of what it is trying to be, and carrying them on the default path cost
+more in menu surface and support than they returned.
+
+Shelved here means: **the code and its test suites stay in the repo**, and they
+stay out of the default build, the mode hub and the settings drawer. This is a
+reversal of an earlier README that called the TON path the primary direction;
+it isn't, and nothing downstream should assume it is. The decision is recorded
+in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 | Layer | What | Status |
 |---|---|---|
-| Game | Single HTML page, local saves | Shipped |
+| Game | Single HTML page, local saves | Shipped — this is the product |
 | License | AGPLv3 | Shipped |
-| Wallet | TON Connect (vanilla JS) | Scaffolded in Options |
-| Manifest | `tonconnect-manifest.json` | In repo (needs public HTTPS URL) |
-| On-chain | Ladder / entry / prizes contracts | Planned (see ADR 0006) |
+| Save portability | Export / import a save file, local backups | Shipped |
+| Wallet | TON Connect (vanilla JS), `tonconnect-manifest.json` | Shelved — code + suite kept, off by default |
+| Cloud sync | Supabase email auth + `cloud_saves` | Shelved — code + suite kept, off by default |
+| Peer-to-peer | WebRTC direct duels | Shelved — code + suite kept, off by default |
+| On-chain | Ladder / entry / prizes contracts | Not planned (ADR [0006](docs/adr/0006-ton-connect-and-on-chain.md) is history, not a roadmap) |
 
-### Honest constraint (from TON docs)
+### Turning one back on
 
-Wallets fetch `tonconnect-manifest.json` over **HTTPS** with no auth and no
-challenge page. Opening a lone `file://` HTML file can play the game, but
-**cannot** complete wallet connect until the manifest (and ideally the app) is
-reachable at a public HTTPS URL.
-
-Open-source-friendly options:
-
-1. **GitHub Pages** on this repo (recommended for AGPL distribution)
-2. Any static host that serves the repo root over HTTPS
-
-Set the public origin in the manifest (`url`, `iconUrl`) after you know the Pages
-URL. Optional build env:
+Nothing shelved is wired to anything by default. Supabase and TON are already
+inert unless their build env is set:
 
 ```bash
-AZHA_TON_MANIFEST_URL=https://YOUR_USER.github.io/YOUR_REPO/tonconnect-manifest.json
+AZHA_SUPABASE_URL=...  AZHA_SUPABASE_ANON_KEY=...   npm run build   # cloud sync
+AZHA_TON_MANIFEST_URL=https://YOUR_USER.github.io/YOUR_REPO/tonconnect-manifest.json npm run build
 ```
 
-Docs: [docs.ton.org](https://docs.ton.org/), ADR [0006](docs/adr/0006-ton-connect-and-on-chain.md).
+The `AZHA_SHELVED=0` build flag restores, in one build: the three shelved
+battle modules (`judging`, `corner-protocol`, `weight-cut`), the shelved
+launch modes (`endless`, `weekly`, `daily`, `tower`, `dojo`, `vs`, `vs2`,
+`ghost`, `p2p`) on their menu tabs, and the wallet / cloud / P2P rows in
+Options. In the default build none of those are reachable: the modules are
+not in the page and the rows are not drawn.
 
-## Optional centralized cloud (not required)
-
-Supabase email auth + `cloud_saves` remains an **optional** sync path when
-`AZHA_SUPABASE_*` is set at build time. It is centralized. Prefer TON + local
-export for the decentralized AGPL distribution story.
+Two constraints worth keeping on record if anyone un-shelves the wallet path:
+wallets fetch `tonconnect-manifest.json` over **HTTPS** with no auth, so a lone
+`file://` page can play the game but can never complete a wallet connect; and
+Supabase is a centralized dependency, which is the opposite of what the offline
+single-file distribution is for.
 
 ## Build tooling
 
 ```bash
 npm run build              # bundles src/ into aqua-zero-heavens-arena.html
 npm test
+npm run docs               # re-measure balance, rewrite the block in ARCHITECTURE.md
+npm run check:docs         # fail if the committed docs no longer match the audit
 npm run check:security
 npm run ci
 ```
+
+Balance numbers in `ARCHITECTURE.md` are generated, not typed. They come from
+`tools/audit-balance.js` via `tools/gen-docs.js`, which also writes
+`docs/balance-report.json`. Re-run `npm run docs` after anything that touches
+combat.
 
 Static header configs (`vercel.json`, `netlify.toml`) remain for anyone who
 deploys that way. They are not required to download and play from GitHub.

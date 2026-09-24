@@ -102,12 +102,33 @@ module.exports = function (h) {
     ok(typeof A.traitTuneFor === "function", "the tuning table is wired into traits");
     const tuned = Object.keys(A.TRAIT_TUNE || {}).length;
     ok(tuned > 0, "and it carries corrections", tuned + " fighters corrected");
-    let extreme = 0;
-    Object.keys(A.TRAIT_TUNE || {}).forEach((k) => {
+    /* Two bounds, because they say different things. The hard one is the
+       tuner's own clamp in tools/tune-roster.js - nothing may ever sit
+       outside it, or the table has been hand-edited or the clamp moved
+       without a note. The soft one is the original 0.7-1.4 "a correction
+       is a thumb, not a rewrite" rule: after the damage-model collapse a
+       handful of fighters genuinely needed more thumb than that (the
+       tuner floor had to go to 0.50 for one single-discipline kickboxer
+       who won 68.8% while the other 24 spanned 8.4 points), so the rule
+       is now that the roster as a whole still lives inside it. */
+    const keys = Object.keys(A.TRAIT_TUNE || {});
+    let outsideClamp = 0, outsideThumb = 0;
+    keys.forEach((k) => {
       const v = A.TRAIT_TUNE[k];
-      if (v < 0.7 || v > 1.4) extreme++;
+      if (v < 0.50 || v > 1.52) outsideClamp++;
+      if (v < 0.7 || v > 1.4) outsideThumb++;
     });
-    ok(extreme === 0, "no correction is extreme enough to erase a dossier", extreme);
+    ok(outsideClamp === 0, "no correction escapes the tuner's own clamp", outsideClamp);
+    /* the real "thumb, not a rewrite" signal: a table that has quietly
+       become a rescale of the whole roster has a median a long way off 1,
+       whatever its extremes are doing */
+    const sorted = keys.map((k) => A.TRAIT_TUNE[k]).sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    ok(Math.abs(median - 1) <= 0.15, "the typical fighter is barely corrected at all",
+       "median " + median.toFixed(3));
+    ok(outsideThumb <= Math.ceil(keys.length / 3),
+       "and only a minority need more than the original 0.7-1.4 thumb",
+       outsideThumb + " of " + keys.length);
   }
   {
     // the tuning must not have flattened the roster into clones

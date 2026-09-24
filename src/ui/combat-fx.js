@@ -12,6 +12,9 @@ const CombatFX = {
     
     flashFrames: 0,
     flashColor: 'white',
+
+    chromaticAberrationFrames: 0,
+    chromaticAberrationIntensity: 0,
     
     slowMoFrames: 0,
     slowMoFactor: 1,
@@ -41,6 +44,14 @@ const CombatFX = {
         if (this.hitStopFrames > 0) {
             this.hitStopFrames--;
             return;
+        }
+
+        // Chromatic Aberration decay
+        if (this.chromaticAberrationFrames > 0) {
+            this.chromaticAberrationFrames--;
+            this.chromaticAberrationIntensity *= 0.85;
+        } else {
+            this.chromaticAberrationIntensity = 0;
         }
 
         // Camera zoom and pan interpolation
@@ -112,7 +123,7 @@ const CombatFX = {
         // Update banner
         if (this.banner) {
             this.banner.life--;
-            this.banner.scale = Math.min(1.2, this.banner.scale + 0.05);
+            this.banner.scale = Math.min(1.0, this.banner.scale + 0.08);
             if (this.banner.life <= 0) {
                 this.banner = null;
             }
@@ -135,11 +146,17 @@ const CombatFX = {
         this.cameraZoomTimer = durationFrames || 30;
     },
 
+    triggerChromaticAberration: function(intensity, frames) {
+        this.chromaticAberrationIntensity = intensity || 6;
+        this.chromaticAberrationFrames = frames || 8;
+    },
+
     triggerKOFinish: function() {
         this.triggerFlash('rgba(255,255,255,0.85)', 12);
         this.triggerShake(18, 36);
         this.triggerHitStop(8);
-        this.triggerCameraZoom(1.25, 0, -20, 60);
+        this.triggerCameraZoom(1.35, 0, -18, 60);
+        this.triggerChromaticAberration(10, 20);
         this.slowMoFrames = 120; // 2 seconds at 60fps
         this.slowMoFactor = 0.25; // 1/4 speed
         this.triggerBanner('KNOCKOUT!', '#e6392f', 'MATCH CONCLUDED');
@@ -156,25 +173,63 @@ const CombatFX = {
     triggerStaminaBreak: function() {
         this.staminaBreakTimer = 30;
         this.triggerHitStop(5);
-        this.triggerCameraZoom(1.12, 0, 0, 24);
+        this.triggerCameraZoom(1.15, 0, 0, 24);
+        this.triggerChromaticAberration(5, 10);
         this.triggerBanner('GUARD BREAK!', '#f59e0b', 'DEFENSE SHATTERED');
     },
 
     triggerClash: function(x, y) {
         this.triggerShake(8, 12);
         this.triggerHitStop(3);
+        this.triggerCameraZoom(1.18, (x ? (x - 480) * 0.15 : 0), 0, 26);
         this.triggerFlash('rgba(255, 255, 200, 0.4)', 3);
+        this.triggerChromaticAberration(4, 6);
         this.spawnSparks(x || 480, y || 270, 24, '#fbbf24');
         this.triggerBanner('CLASH!', '#f59e0b', 'EQUAL STRIKE VELOCITY');
+    },
+
+    triggerLauncher: function(x, y) {
+        this.triggerShake(10, 16);
+        this.triggerHitStop(4);
+        this.triggerCameraZoom(1.22, (x ? (x - 480) * 0.15 : 0), -28, 30);
+        this.triggerFlash('rgba(34, 211, 238, 0.4)', 3);
+        this.triggerChromaticAberration(5, 8);
+        this.spawnSparks(x || 480, y || 270, 20, '#22d3ee');
+        this.triggerBanner('LAUNCHER!', '#22d3ee', 'VERTICAL AIRBORNE POPUP');
     },
 
     triggerCounterHit: function(x, y) {
         this.triggerShake(12, 18);
         this.triggerHitStop(6);
-        this.triggerCameraZoom(1.15, (x ? (x - 480) * 0.2 : 0), 0, 28);
+        this.triggerCameraZoom(1.30, (x ? (x - 480) * 0.25 : 0), 0, 32);
         this.triggerFlash('rgba(230, 57, 47, 0.4)', 4);
+        this.triggerChromaticAberration(7, 12);
         this.spawnSparks(x || 480, y || 270, 32, '#ff4d42');
         this.triggerBanner('COUNTER!', '#e6392f', 'CLEAN INTERCEPTION');
+    },
+
+    triggerMoveBanner: function(moveName, discipline, power, isCounter, isSuper, subtitle) {
+        let col = "#22d3ee";
+        if (isSuper) col = "#f59e0b";
+        else if (isCounter) col = "#e6392f";
+        else if (discipline === "muaythai" || discipline === "lethwei") col = "#ef4444";
+        else if (discipline === "boxing" || discipline === "kickboxing") col = "#38bdf8";
+        else if (discipline === "bjj" || discipline === "judo" || discipline === "sambo") col = "#a855f7";
+        else if (discipline === "taekwondo" || discipline === "karate") col = "#f59e0b";
+
+        const sub = subtitle || (
+            (discipline ? discipline.toUpperCase() + " • " : "") +
+            (isSuper ? "SIGNATURE FINISHER" : (isCounter ? "CRITICAL COUNTER" : (power >= 30 ? "MAXIMUM IMPACT" : "CLEAN STRIKE")))
+        );
+
+        this.banner = {
+            text: (isSuper ? "⚡ " : (isCounter ? "💥 " : "")) + (moveName || "TECHNIQUE").toUpperCase(),
+            subtitle: sub,
+            color: col,
+            life: 48,
+            maxLife: 48,
+            scale: 0.6
+        };
     },
 
     setCornerPressure: function(intensity) {
@@ -218,10 +273,21 @@ const CombatFX = {
 
     applyToCanvas: function(ctx, canvasWidth, canvasHeight) {
         if (!ctx) return;
-        // The vignette/stamina/flash blocks below set fillStyle without a
-        // balancing save/restore; wrap the whole pass so nothing leaks onto the
-        // next drawing this frame.
         ctx.save();
+
+        // Apply Chromatic Aberration Impact Fringe
+        if (this.chromaticAberrationIntensity > 0.5) {
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            var caOffset = this.chromaticAberrationIntensity;
+            // Cyan fringe (left)
+            ctx.fillStyle = "rgba(34, 211, 238, " + Math.min(0.22, caOffset * 0.025).toFixed(3) + ")";
+            ctx.fillRect(0, 0, canvasWidth - caOffset, canvasHeight);
+            // Red fringe (right)
+            ctx.fillStyle = "rgba(230, 57, 47, " + Math.min(0.22, caOffset * 0.025).toFixed(3) + ")";
+            ctx.fillRect(caOffset, 0, canvasWidth - caOffset, canvasHeight);
+            ctx.restore();
+        }
 
         // Apply Desperation Vignette (<20% HP)
         if (this.desperationActive) {
@@ -268,33 +334,56 @@ const CombatFX = {
             ctx.restore();
         }
 
-        // Render Impact Banner callout
+        // Render Impact Banner callout (Arcade action splash cut-in)
         if (this.banner) {
             ctx.save();
             var b = this.banner;
             var alpha = b.life > 10 ? 1 : b.life / 10;
             ctx.globalAlpha = alpha;
-            ctx.translate(canvasWidth / 2, canvasHeight / 2 - 40);
+            ctx.translate(canvasWidth / 2, 72);
             ctx.scale(b.scale, b.scale);
 
-            // Banner Backdrop
-            ctx.fillStyle = "rgba(10, 12, 18, 0.88)";
-            ctx.strokeStyle = b.color;
-            ctx.lineWidth = 2.5;
-            ctx.fillRect(-180, -32, 360, 64);
-            ctx.strokeRect(-180, -32, 360, 64);
+            // Banner Backdrop with cyber angle cuts
+            const bWidth = 420;
+            const bHeight = 52;
+            const bGrad = ctx.createLinearGradient(-bWidth/2, 0, bWidth/2, 0);
+            bGrad.addColorStop(0, "rgba(8, 10, 16, 0.0)");
+            bGrad.addColorStop(0.2, "rgba(10, 14, 22, 0.94)");
+            bGrad.addColorStop(0.8, "rgba(10, 14, 22, 0.94)");
+            bGrad.addColorStop(1, "rgba(8, 10, 16, 0.0)");
 
-            // Banner Text
+            ctx.fillStyle = bGrad;
+            ctx.fillRect(-bWidth/2, -bHeight/2, bWidth, bHeight);
+
+            // Cyber accent borders
+            ctx.strokeStyle = b.color;
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.moveTo(-bWidth/2 + 30, -bHeight/2);
+            ctx.lineTo(bWidth/2 - 30, -bHeight/2);
+            ctx.moveTo(-bWidth/2 + 30, bHeight/2);
+            ctx.lineTo(bWidth/2 - 30, bHeight/2);
+            ctx.stroke();
+
+            // Accent Corner Brackets
             ctx.fillStyle = b.color;
-            ctx.font = "italic 900 24px Bahnschrift, sans-serif";
+            ctx.fillRect(-bWidth/2 + 26, -bHeight/2, 4, 10);
+            ctx.fillRect(bWidth/2 - 30, -bHeight/2, 4, 10);
+            ctx.fillRect(-bWidth/2 + 26, bHeight/2 - 10, 4, 10);
+            ctx.fillRect(bWidth/2 - 30, bHeight/2 - 10, 4, 10);
+
+            // Banner Main Move Text
+            ctx.fillStyle = b.color;
+            ctx.font = "italic 900 20px 'Trebuchet MS', Bahnschrift, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(b.text, 0, -4);
+            ctx.textBaseline = "middle";
+            ctx.fillText(b.text, 0, -6);
 
             if (b.subtitle) {
-                ctx.fillStyle = "#e2e8f0";
-                ctx.font = "bold 10px Bahnschrift, sans-serif";
-                ctx.letterSpacing = "0.2em";
-                ctx.fillText(b.subtitle.toUpperCase(), 0, 18);
+                ctx.fillStyle = "#cbd5e1";
+                ctx.font = "bold 9px 'Trebuchet MS', Bahnschrift, sans-serif";
+                ctx.letterSpacing = "0.22em";
+                ctx.fillText(b.subtitle.toUpperCase(), 0, 12);
             }
             ctx.restore();
         }

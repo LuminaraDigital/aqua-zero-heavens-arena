@@ -13,11 +13,14 @@ const CREDIT_STORAGE_KEY = "azha_credit_ledger_v1";
 
 const CreditLedger = (function () {
   let state = {
-    balance: 500, // Starting purse credits
+    balance: 500, // Starting AZ-PURSE credits (Tier 1)
+    glory: 50,    // Starting AZ-GLORY premium tokens (Tier 2)
+    eventTokens: 0, // Starting AZ-TOKEN fight week event tokens (Tier 3)
     escrowLocked: 0,
     lifetimeEarned: 500,
     lifetimeSpent: 0,
     stakedPools: {}, // tournamentId -> { amount, entryTime, yieldRate }
+    inventory: [],   // unlocked skins / cosmetics / event passes
     txHistory: [],
   };
 
@@ -189,9 +192,102 @@ const CreditLedger = (function () {
     return { valid: true, totalEntries: state.txHistory.length };
   }
 
+  function getGlory() {
+    return state.glory || 0;
+  }
+
+  function getEventTokens() {
+    return state.eventTokens || 0;
+  }
+
+  function getInventory() {
+    return state.inventory ? state.inventory.slice() : [];
+  }
+
+  function depositGlory(amount, reason, meta) {
+    if (typeof amount !== "number" || amount <= 0) return { ok: false, error: "Invalid glory amount" };
+    state.glory = (state.glory || 0) + Math.round(amount);
+    const tx = createTxEntry("GLORY_DEPOSIT", Math.round(amount), state.balance, Object.assign({ reason: reason || "Reward", gloryAfter: state.glory }, meta));
+    return { ok: true, glory: state.glory, tx: tx };
+  }
+
+  function spendGlory(amount, reason, meta) {
+    if (typeof amount !== "number" || amount <= 0) return { ok: false, error: "Invalid glory amount" };
+    const cleanAmount = Math.round(amount);
+    if ((state.glory || 0) < cleanAmount) return { ok: false, error: "Insufficient glory points" };
+    state.glory -= cleanAmount;
+    const tx = createTxEntry("GLORY_SPEND", cleanAmount, state.balance, Object.assign({ reason: reason || "Purchase", gloryAfter: state.glory }, meta));
+    return { ok: true, glory: state.glory, tx: tx };
+  }
+
+  function depositEventTokens(amount, reason, meta) {
+    if (typeof amount !== "number" || amount <= 0) return { ok: false, error: "Invalid tokens amount" };
+    state.eventTokens = (state.eventTokens || 0) + Math.round(amount);
+    const tx = createTxEntry("EVENT_TOKEN_EARNED", Math.round(amount), state.balance, Object.assign({ reason: reason || "Event Reward", tokensAfter: state.eventTokens }, meta));
+    return { ok: true, eventTokens: state.eventTokens, tx: tx };
+  }
+
+  function spendEventTokens(amount, reason, meta) {
+    if (typeof amount !== "number" || amount <= 0) return { ok: false, error: "Invalid tokens amount" };
+    const cleanAmount = Math.round(amount);
+    if ((state.eventTokens || 0) < cleanAmount) return { ok: false, error: "Insufficient event tokens" };
+    state.eventTokens -= cleanAmount;
+    const tx = createTxEntry("EVENT_TOKEN_SPENT", cleanAmount, state.balance, Object.assign({ reason: reason || "Redemption", tokensAfter: state.eventTokens }, meta));
+    return { ok: true, eventTokens: state.eventTokens, tx: tx };
+  }
+
+  function settleFightContract(payBreakdown) {
+    if (!payBreakdown) return { ok: false, error: "Missing payout breakdown" };
+    const net = Math.max(1, Math.round(payBreakdown.netPurse || payBreakdown.net || 0));
+    state.balance += net;
+    state.lifetimeEarned += net;
+
+    if (payBreakdown.eventTokens && payBreakdown.eventTokens > 0) {
+      state.eventTokens = (state.eventTokens || 0) + payBreakdown.eventTokens;
+    }
+
+    const tx = createTxEntry("CONTRACT_PAYOUT", net, state.balance, {
+      gross: payBreakdown.grossPurse || payBreakdown.gross || net,
+      net: net,
+      deductions: payBreakdown.deductions || {},
+      breakdown: payBreakdown.breakdown || {},
+      eventTokensEarned: payBreakdown.eventTokens || 0,
+      contractId: payBreakdown.contractId || null,
+    });
+
+    return { ok: true, balance: state.balance, glory: state.glory, eventTokens: state.eventTokens, tx: tx };
+  }
+
+  function redeemStoreItem(item, currencyType) {
+    if (!item) return { ok: false, error: "Item required" };
+    state.inventory = state.inventory || [];
+    if (state.inventory.indexOf(item.id) >= 0) {
+      return { ok: false, error: "Item already owned" };
+    }
+
+    if (currencyType === "GLORY") {
+      const cost = item.costGlory || 9999;
+      if ((state.glory || 0) < cost) return { ok: false, error: "Not enough glory" };
+      state.glory -= cost;
+      state.inventory.push(item.id);
+      const tx = createTxEntry("REDEEM_GLORY", cost, state.balance, { itemId: item.id, item: item.name });
+      return { ok: true, inventory: state.inventory, glory: state.glory, tx: tx };
+    } else {
+      const cost = item.costTokens || 9999;
+      if ((state.eventTokens || 0) < cost) return { ok: false, error: "Not enough event tokens" };
+      state.eventTokens -= cost;
+      state.inventory.push(item.id);
+      const tx = createTxEntry("REDEEM_TOKEN", cost, state.balance, { itemId: item.id, item: item.name });
+      return { ok: true, inventory: state.inventory, eventTokens: state.eventTokens, tx: tx };
+    }
+  }
+
   function getState() {
     return {
       balance: state.balance,
+      glory: state.glory || 0,
+      eventTokens: state.eventTokens || 0,
+      inventory: state.inventory || [],
       escrowLocked: state.escrowLocked,
       available: getAvailable(),
       lifetimeEarned: state.lifetimeEarned,
@@ -230,6 +326,15 @@ const CreditLedger = (function () {
   return {
     init: init,
     getBalance: getBalance,
+    getGlory: getGlory,
+    getEventTokens: getEventTokens,
+    getInventory: getInventory,
+    depositGlory: depositGlory,
+    spendGlory: spendGlory,
+    depositEventTokens: depositEventTokens,
+    spendEventTokens: spendEventTokens,
+    settleFightContract: settleFightContract,
+    redeemStoreItem: redeemStoreItem,
     getEscrow: getEscrow,
     getAvailable: getAvailable,
     deposit: deposit,

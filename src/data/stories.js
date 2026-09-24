@@ -73,7 +73,7 @@ STORY(1, {
    He is aware which half the province respects and it is not the half
    they filmed. */
 STORY(2, {
-  goal: "To take the lightweight belt off Usman Magomedov and carry the first one home to Hunan.",
+  goal: "To take the lightweight belt off Ruslan Magomedov and carry the first one home to Hunan.",
   creed: "The kick is the question. The shot is the answer.",
   callout: "You will guard high. You always guard high. Then I am at your knees.",
   respect: "I went low too early. Next time I make you honest first.",
@@ -160,7 +160,7 @@ STORY(8, {
   rematch: "You beat a fifty-year-old once. Now beat him when he is annoyed.",
 });
 
-/* --- 9  Jacare Aldo "The Prince" - 30, Manaus, BJJ --- */
+/* --- 9  Jairo Silva "The Prince" - 30, Belém, BJJ --- */
 /* Warm, funny, and completely at home on his back, which unsettles
    people more than any amount of shouting would. */
 STORY(9, {
@@ -168,7 +168,7 @@ STORY(9, {
   creed: "My back on the mat is not trouble. It is my office.",
   callout: "Take me down. Please. I have been waiting all week for that.",
   respect: "Beautiful. You did not panic in the guard. Almost nobody manages that.",
-  grudge: "You thought top position was winning. In Manaus we call that a gift.",
+  grudge: "You thought top position was winning. In Belém we call that a gift.",
   rival: "Ah, the famous bad blood. Come, let us roll about anyway.",
   rematch: "You passed my guard. I have been building a new one since.",
 });
@@ -199,7 +199,7 @@ STORY(11, {
   rematch: "You beat me. I went home and fixed the sweep. Here it is.",
 });
 
-/* --- 12  Rolando Fitch - 20, Fort Wayne, Submission grappling --- */
+/* --- 12  Roland Finch - 20, Indianapolis, Submission grappling --- */
 /* The only man on the card with no striking art at all, and he is
    cheerfully honest about it. Lowest rating here, biggest specialism. */
 STORY(12, {
@@ -212,11 +212,11 @@ STORY(12, {
   rematch: "You defended the twister. Statistically that does not happen twice.",
 });
 
-/* --- 13  Usman Magomedov "Sambo Prince" - 24, Kizilyurt, Sambo --- */
+/* --- 13  Ruslan Magomedov "Sambo Prince" - 24, Derbent, Sambo --- */
 /* Mountain discipline, no theatre. A belt in his village is a street's
    belt, not a man's, and he talks that way without ever explaining it. */
 STORY(13, {
-  goal: "To carry the lightweight belt back to Kizilyurt, where a champion belongs to the whole street and not to himself.",
+  goal: "To carry the lightweight belt back to Derbent, where a champion belongs to the whole street and not to himself.",
   creed: "Where I come from, the mat is the floor of the house.",
   callout: "You will stand up. I will put you down. All night.",
   respect: "You earned it. I will tell them at home that you earned it.",
@@ -252,11 +252,11 @@ STORY(15, {
   rematch: "You got out from under me. I have not slept properly since.",
 });
 
-/* --- 16  Terry Crawford "Thunder" - 34, Omaha, Boxing --- */
+/* --- 16  Tyson Reed "Thunder" - 34, Lincoln, Boxing --- */
 /* Boxer's arrogance, entirely earned, plus one decision he will never
    accept. The switch is bait and everybody falls for the bait. */
 STORY(16, {
-  goal: "To take the welterweight belt back from George Saint, who he is certain he beat on every card that mattered.",
+  goal: "To take the welterweight belt back from Gregory Saint, who he is certain he beat on every card that mattered.",
   creed: "Boxing is not one of the arts here. It is the one that finishes.",
   callout: "Switch southpaw, you follow, and my hook is already waiting there.",
   respect: "Good hands. I have been in with champions who had worse.",
@@ -265,7 +265,7 @@ STORY(16, {
   rematch: "You beat me once. So you know the check hook is coming.",
 });
 
-/* --- 17  Randall Stevens "Wonder Boy" - 22, Simpsonville, Kenpo --- */
+/* --- 17  Randall Stevens "Wonder Boy" - 22, Greenville, Kenpo --- */
 /* Southern manners over tournament-karate speed. He has heard the line
    about point fighters and a real punch roughly ten thousand times. */
 STORY(17, {
@@ -278,7 +278,7 @@ STORY(17, {
   rematch: "You caught me clean. I have spent months learning not to be there.",
 });
 
-/* --- 18  Anderson Couture "The Giant" - 37, Ohio, Wrestling / Boxing --- */
+/* --- 18  Axel Vance "The Colossus" - 37, Ohio, Wrestling / Boxing --- */
 /* Blue collar, zero charisma, proud of both. His whole career is an
    argument with people who make highlight reels. */
 STORY(18, {
@@ -291,7 +291,7 @@ STORY(18, {
   rematch: "You beat me. Congratulations. Now do it again with a broken nose.",
 });
 
-/* --- 19  George Saint "Bull Rush" - 21, Quebec, Kyokushin / BJJ --- */
+/* --- 19  Gregory Saint "The Ram" - 21, Quebec, Kyokushin / BJJ --- */
 /* Twenty-one, already the best welterweight, and deliberately boring
    about it. The politeness is not softness; it is a filing system. */
 STORY(19, {
@@ -317,7 +317,7 @@ STORY(20, {
   rematch: "You caught me once. I have watched it three hundred times since.",
 });
 
-/* --- 21  Danial Nickal "Crusher" - 37, Rifle, Wrestling --- */
+/* --- 21  Derek Nichols "Crusher" - 37, Boulder, Wrestling --- */
 /* American folkstyle and nothing else, from a town nobody has heard of.
    Says almost nothing that is not about position. */
 STORY(21, {
@@ -330,7 +330,7 @@ STORY(21, {
   rematch: "You beat me standing. I do not plan on standing tonight.",
 });
 
-/* --- 22  Uthman Nurmakhmedov "The Crusher" - 25, Moscow, Draka --- */
+/* --- 22  Timur Akhmedov "The Crusher" - 25, Moscow, Draka --- */
 /* Draka is unfashionable and he likes that. Terse to the point of rude,
    and his entire ambition is that people learn one word. */
 STORY(22, {
@@ -395,9 +395,9 @@ R(3, 14, "Two heavyweights who both end fights from the front headlock. Mason ca
 R(6, 15, "Japanese heavyweights from opposite ends of the country and opposite traditions - Kyoto sumo against Tokyo wrestling. One of them is the answer to a question Japan keeps asking.");
 R(15, 18, "Two wrestlers who win by leaning on people until the leaning becomes the fight. Neither has ever been taken down by the other, and both bring it up unprompted.");
 R(7, 11, "Judo, Shizuoka against Tilburg. Aoki fights to take back something the Dutch school took off Japan a long time ago, and Jansen fights because that is a ridiculous reason.");
-R(9, 12, "Jiu-jitsu from two continents. Aldo learned it in a gi in Manaus, Fitch learned it off a laptop in Indiana, and each is convinced the other missed the point.");
-R(16, 17, "Two American welterweights with nothing in common. Crawford does not think point karate is fighting; Stevens has never been hit cleanly enough to have to argue.");
-R(16, 19, "The welterweight belt. Saint took the decision, Crawford has the scorecards framed above the heavy bag, and neither camp will agree to a date.");
+R(9, 12, "Jiu-jitsu from two continents. Silva learned it in a gi in Belém, Finch learned it off a laptop in Indiana, and each is convinced the other missed the point.");
+R(16, 17, "Two American welterweights with nothing in common. Reed does not think point karate is fighting; Stevens has never been hit cleanly enough to have to argue.");
+R(16, 19, "The welterweight belt. Saint took the decision, Reed has the scorecards framed above the heavy bag, and neither camp will agree to a date.");
 R(1, 4, "Korea against Japan, and a spinning hook kick against a lunging reverse punch. Kwon says karate stopped evolving in 1950. Katou says taekwondo never started.");
 R(21, 22, "Two middleweights with identical jobs - put you down, keep you there. Colorado folkstyle against Moscow draka, and only one of them gets to be the worst place in the sport.");
 R(5, 8, "One welterweight problem with two answers. Yamsiri has never been taken down twice in a fight. Horiuchi has never failed to take anybody down twice.");

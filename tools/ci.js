@@ -13,6 +13,14 @@ const ROOT = path.resolve(__dirname, "..");
 const STEPS = [
   { label: "build", args: ["tools/build.js"] },
   { label: "test", args: ["tests/run-tests.js"] },
+  /* the audit is deterministic, 4 reps is ~21s; see tools/check-balance-gate.js */
+  { label: "check:balance", args: ["tools/check-balance-gate.js"] },
+  /* after check:balance on purpose: both read the same audit, and a docs-drift
+     message is noise while the gate is already red. gen-docs covers the numbers
+     inside the generated block; the `docs` suite under `test` covers the prose
+     around it. Removing either half reopens the hole - ARCHITECTURE.md claimed a
+     19.1-point roster spread while the tool measured 58.3 and printed BROKEN. */
+  { label: "check:docs", args: ["tools/gen-docs.js", "--check"] },
   { label: "check:security", args: ["tools/check-production-security.js"] },
   { label: "check:coverage", args: ["tools/check-coverage-gate.js"] },
   { label: "check:resilience", args: ["tools/check-resilience.js"] },

@@ -1,6 +1,6 @@
 /* =====================================================================
    Aqua Zero Heavens Arena - Expansion Feature Suite
-   Tests for Combat FX/SFX, 200-Floor Tower, Dojo, Create-A-Fighter,
+   Tests for Combat FX/SFX, 200-Floor Tower, Dojo, Register-a-Fighter,
    WebRTC P2P, Replays, TON On-Chain, Virtual Gamepad, Keybindings & i18n.
    ===================================================================== */
 "use strict";
@@ -70,13 +70,39 @@ module.exports = function (h) {
     section("CreateFighterMode custom character allocation");
     const CreateFighterMode = api.CreateFighterMode;
     ok(CreateFighterMode !== undefined, "CreateFighterMode should be defined");
+    CreateFighterMode.init();
+    ok(CreateFighterMode.applyPreset("boxing") === true, "apply boxing gameplan");
+    ok(CreateFighterMode.draft.availablePoints === CreateFighterMode.PRESET_TWEAK_BUDGET, "gameplan grants tweak budget");
+    ok(CreateFighterMode.draft.discipline === "boxing", "gameplan sets discipline");
+    CreateFighterMode.init();
+    ok(CreateFighterMode.applyBlankSlate() === true, "open dossier path");
+    ok(CreateFighterMode.draft.availablePoints === CreateFighterMode.CUSTOM_POINT_BUDGET, "open dossier grants full budget");
     ok(CreateFighterMode.allocatePoint("strength", 10) === true, "allocate strength point");
     ok(CreateFighterMode.draft.availablePoints === 190, "points remaining updated");
     CreateFighterMode.setDiscipline("boxing");
-    ok(CreateFighterMode.draft.discipline === "boxing", "discipline selected");
     CreateFighterMode.setName("Custom Strike Master");
+    CreateFighterMode.setNickname("League Entry");
+    ok(CreateFighterMode.getAllStatKeys().length === 18, "all 18 stats exposed");
+    ok(CreateFighterMode.getStatLabel("stand_off") === "Standing Offense", "dossier rating labels");
+    ok(CreateFighterMode.ATTR_KEYS.indexOf("cardio") >= 0, "uses native ATTR_KEYS cardio");
+    const statKeys = CreateFighterMode.getAllStatKeys();
+    let sIdx = 0;
+    let guard = 0;
+    while (CreateFighterMode.draft.availablePoints > 0 && guard < 500) {
+      if (!CreateFighterMode.allocatePoint(statKeys[sIdx % statKeys.length], 5)) sIdx++;
+      guard++;
+    }
     const profile = CreateFighterMode.finishFighter();
-    ok(profile.name === "Custom Strike Master", "profile generated with custom name");
+
+    ok(profile.ok === true, "profile generated successfully");
+    ok(profile.name === "Custom Strike Master", "profile keeps custom name");
+    ok(profile.bio && profile.bio.a && profile.bio.a.length === 18, "bio has 18 attributes");
+    ok(CreateFighterMode.toBioArray().length === 18, "toBioArray returns 18 values");
+    ok(CreateFighterMode.PRESET_IDS.length >= 8, "at least 8 AZX gameplans");
+    ok(CreateFighterMode.WIZARD_STEPS.length === 5, "5-step wizard flow");
+    ok(CreateFighterMode.canAdvanceFromStep("ratings") === true, "ratings step passable when budget spent");
+    ok(CreateFighterMode.WIZARD_STEPS[0].id === "gameplan", "first step is gameplan");
+    ok(CreateFighterMode.WIZARD_STEPS[4].id === "register", "final step is register");
 
     section("P2PNetwork state handling");
     const P2PNetwork = api.P2PNetwork;

@@ -82,14 +82,45 @@ const boot = require("../tests/harness");
 const names = boot({ quiet: true }).api.FIGHTERS.map((f) => f.name);
 const idOf = (n) => names.indexOf(n);
 
+/* Correction range. Was 0.72-1.38, and the damage-model collapse walked
+   straight into the end of it: five fighters sat pinned at a bound while
+   the roster gap held at 48 points, because the loop had run out of thumb.
+   A wider range is not a licence to lie about a fighter - the dossier is
+   still what it was and the correction is still printed here in the open -
+   it is the admission that after the collapse a bad KIT costs more than a
+   single strength scalar at 0.72 can buy back.
+
+   The floor then had to go again, 0.62 -> 0.50, for one fighter: Sergio
+   Newton, a single-discipline kickboxer with a 26-technique pool and no
+   bad options in it, sat at 68.8% while the other twenty-four spanned 8.4
+   points. Pinned at 0.62 he was still the best fighter in the game; at
+   0.42 he wins 15.6%, so the correction is steep and the answer was
+   between the two.
+
+   Worth being exact about what the wider floor did: it let the SEARCH
+   move, it is not where the answer sits. The shipped table runs 0.56 to
+   1.4214 - no fighter rests on either bound, so neither bound is binding
+   and neither is doing the balancing. One fighter needing this much thumb
+   is still worth a look at his kit in Phase 3; the table is the record. */
+const TUNE_MIN = 0.50, TUNE_MAX = 1.52;
+/* 0.34 overshot: rounds 1-3 closed the gap 53 -> 40 and rounds 4-8 opened
+   it back to 48, each round chasing the extremes it had created. */
+const TUNE_RATE = 0.22;
+
 console.log("closed-loop roster tuning - " + ROUNDS + " rounds, " + REPS + " fights per matchup\n");
 let last = null;
+/* The loop is noisy - 4 fights per matchup is a coarse measurement and a
+   correction can land the wrong side of it. Keeping the best table seen
+   rather than the last one means a round that overshoots costs a round,
+   not the whole run. */
+let bestGap = Infinity, bestTune = JSON.parse(JSON.stringify(tune)), bestRound = 0;
 for (let r = 1; r <= ROUNDS; r++) {
   const m = measure();
   const gap = m.best - m.worst;
   console.log("round " + r + ":  best " + (m.best * 100).toFixed(1) + "%   worst " +
     (m.worst * 100).toFixed(1) + "%   gap " + (gap * 100).toFixed(1) + "%");
   last = m;
+  if (gap < bestGap) { bestGap = gap; bestTune = JSON.parse(JSON.stringify(tune)); bestRound = r; }
   if (gap <= 0.15) { console.log("\nwithin tolerance - stopping"); break; }
   // pull every measured fighter toward 50%, gently, so the loop converges
   // rather than oscillating
@@ -99,12 +130,22 @@ for (let r = 1; r <= ROUNDS; r++) {
     if (fid < 0) return;
     const err = m.rates[n] - 0.5;
     const cur = tune[fid] || 1;
-    const next = Math.max(0.72, Math.min(1.38, cur * (1 - err * 0.34)));
+    const next = Math.max(TUNE_MIN, Math.min(TUNE_MAX, cur * (1 - err * TUNE_RATE)));
     if (Math.abs(next - cur) > 0.001) { tune[fid] = +next.toFixed(4); moved++; }
   });
   writeTune(tune, "converged over " + r + " tuning rounds against tools/audit-balance.js");
   execFileSync("node", [BUILD], { encoding: "utf8", maxBuffer: 1 << 24 });
   console.log("          corrected " + moved + " fighters");
+}
+if (bestGap < (last ? last.best - last.worst : Infinity)) {
+  tune = bestTune;
+  /* NOT "converged over N rounds" - it did not converge, the search was
+     stopped and the best table it passed through was kept. The file is
+     the only record of where a number came from, so it says which. */
+  writeTune(tune, "best of " + ROUNDS + " tuning rounds against tools/audit-balance.js" +
+    " (round " + bestRound + ", gap " + (bestGap * 100).toFixed(1) + "% - later rounds were worse)");
+  execFileSync("node", [BUILD], { encoding: "utf8", maxBuffer: 1 << 24 });
+  console.log("\nkept round " + bestRound + " (gap " + (bestGap * 100).toFixed(1) + "%) - later rounds were worse");
 }
 console.log("\nfinal corrections:");
 Object.keys(tune).sort((a, b) => tune[a] - tune[b]).forEach((fid) =>

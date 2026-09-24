@@ -1,0 +1,153 @@
+{
+  "console_errors": [],
+  "checks": {
+    "fight_tab_fresh_save": [
+      "adv",
+      "chal",
+      "ranked"
+    ],
+    "fight_tab_is_three": true,
+    "fight_tab_with_run": [
+      "cont",
+      "adv",
+      "chal",
+      "ranked"
+    ],
+    "menu_state": {
+      "scene": 4,
+      "duel": false,
+      "ph": null,
+      "choreo": {
+        "mode": null,
+        "clashT": 0,
+        "finishT": 0,
+        "burstT": 0,
+        "shadowA": 0,
+        "orbitAngle": 0,
+        "seeded": false
+      },
+      "cam": {
+        "y": 4.5,
+        "z": 20
+      },
+      "fightTab": [
+        "cont",
+        "adv",
+        "chal",
+        "ranked"
+      ]
+    },
+    "walkout_samples": [
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ],
+      [
+        16,
+        {
+          "y": 4.5,
+          "z": 20
+        }
+      ]
+    ],
+    "walkout_camera_moves": true,
+    "clash_mode_engaged_live": false,
+    "after_fight": {
+      "scene": 6,
+      "duel": true,
+      "ph": 0,
+      "choreo": {
+        "mode": "duel",
+        "clashT": 0,
+        "finishT": 0,
+        "burstT": 0,
+        "shadowA": 0.4498413751101426,
+        "orbitAngle": 0,
+        "seeded": true
+      },
+      "cam": {
+        "y": 4.5,
+        "z": 21
+      },
+      "fightTab": [
+        "cont",
+        "adv",
+        "chal",
+        "ranked"
+      ]
+    }
+  }
+}

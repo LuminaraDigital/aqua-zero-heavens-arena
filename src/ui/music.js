@@ -597,3 +597,52 @@ function crowdSwell(event, mul) {
     band: e.band, q: e.q,
   };
 }
+
+/* Crowd cue families with cooldowns so reactions accent, never drown,
+   commentary. Inspired by fight-night audio packs; procedural here. */
+const CROWD_FAMILIES = {
+  ko: { cooldown: 180, variants: ["ko", "knockdown"] },
+  heat: { cooldown: 90, variants: ["reversal", "escape"] },
+  room: { cooldown: 60, variants: ["entrance", "bell", "crowd"] },
+};
+const CROWD_FAMILY_STATE = { last: {}, lastVariant: {} };
+
+function crowdFamilyOf(event) {
+  const k = String(event || "").toLowerCase();
+  const ids = Object.keys(CROWD_FAMILIES);
+  for (let i = 0; i < ids.length; i++) {
+    const fam = CROWD_FAMILIES[ids[i]];
+    if (fam.variants.indexOf(k) >= 0 || ids[i] === k) return ids[i];
+  }
+  return "room";
+}
+
+function crowdCue(event, mul, frameClock) {
+  const fam = crowdFamilyOf(event);
+  const conf = CROWD_FAMILIES[fam] || CROWD_FAMILIES.room;
+  const t = typeof frameClock === "number" ? frameClock : 0;
+  const last = Object.prototype.hasOwnProperty.call(CROWD_FAMILY_STATE.last, fam)
+    ? CROWD_FAMILY_STATE.last[fam]
+    : -1e9;
+  if (t - last < conf.cooldown) {
+    return { event: "", gain: 0, attack: 0, hold: 0, release: 0, band: 0, q: 1, suppressed: true, family: fam };
+  }
+  const variants = conf.variants;
+  let pick = String(event || variants[0]).toLowerCase();
+  if (variants.indexOf(pick) < 0) pick = variants[0];
+  if (pick === CROWD_FAMILY_STATE.lastVariant[fam] && variants.length > 1) {
+    pick = variants[(variants.indexOf(pick) + 1) % variants.length];
+  }
+  CROWD_FAMILY_STATE.last[fam] = t;
+  CROWD_FAMILY_STATE.lastVariant[fam] = pick;
+  const swell = crowdSwell(pick, mul);
+  swell.family = fam;
+  swell.variant = pick;
+  swell.suppressed = false;
+  return swell;
+}
+
+function crowdCueReset() {
+  CROWD_FAMILY_STATE.last = {};
+  CROWD_FAMILY_STATE.lastVariant = {};
+}

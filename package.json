@@ -9,6 +9,9 @@
     "build": "node tools/build.js",
     "check:security": "node tools/check-production-security.js",
     "check:coverage": "node tools/check-coverage-gate.js",
+    "check:balance": "node tools/check-balance-gate.js",
+    "check:docs": "node tools/gen-docs.js --check",
+    "docs": "node tools/gen-docs.js",
     "check:resilience": "node tools/check-resilience.js",
     "ci": "node tools/ci.js",
     "audit": "npm audit --audit-level=high"

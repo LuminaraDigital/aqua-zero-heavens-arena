@@ -11,10 +11,10 @@ module.exports = function (h) {
   const db = (api && api.DeckBuilder) || (typeof global !== "undefined" && global.DeckBuilder) || require("../src/progress/deck-builder");
   ok(db !== null && typeof db === "object", "DeckBuilder object should be defined");
 
-  // Valid 12-card deck
+  // Valid 12-card deck built from cheap legal techniques (TECH costs drift)
   const sampleDeck = [
-    "jab", "cross", "lead_hook", "rear_hook", "lead_upper", "rear_upper",
-    "overhand", "liver_shot", "check_hook", "shoulder_roll", "switch_kick", "low_kick"
+    "kuzushi", "guard_pull", "basic_close", "head_control", "basic_tieup", "switch_step",
+    "apkubi", "juchum_seogi", "kkoa_seogi", "high_guard", "plum_clinch", "lw_shell"
   ];
 
   const cost = db.calculateDeckCost(sampleDeck);
@@ -56,4 +56,25 @@ module.exports = function (h) {
   ok(impRes.ok === true, "deck imported from code successfully");
   ok(impRes.deckName === "Iron Fist Loadout", "imported deck name matches original");
   ok(impRes.techniques.length === 12, "imported deck has all 12 cards");
+
+  // Test Analytics & Stats helper
+  const stats = db.getDeckStats(sampleDeck);
+  ok(stats !== null && typeof stats === "object", "deck stats returned valid object");
+  ok(stats.count === 12, "deck stats count is 12");
+  ok(stats.cost === cost, "deck stats cost matches calculated cost");
+  ok(stats.remainingBudget === db.MAX_BUDGET - cost, "remaining budget is accurate");
+  ok(stats.ranges.MID > 0, "deck stats tracks MID range count");
+  ok(stats.staminaCurve.low >= 0, "deck stats tracks stamina curve");
+  ok(stats.isLegal === true, "deck stats marks legal deck");
+
+  // Test Vault Card Retrieval
+  const vaultAll = db.getVaultCards({ discipline: "all" });
+  ok(Array.isArray(vaultAll) && vaultAll.length > 0, "getVaultCards retrieves card list");
+  const vaultBoxing = db.getVaultCards({ discipline: "boxing" });
+  ok(Array.isArray(vaultBoxing) && vaultBoxing.every(function(t) { return t.disc === "boxing"; }), "getVaultCards filters by discipline");
+
+  // Test Default Deck
+  const defaultDeck = db.getDefaultDeck(0);
+  ok(Array.isArray(defaultDeck) && defaultDeck.length >= 12, "getDefaultDeck returns valid deck for fighter");
 };
+

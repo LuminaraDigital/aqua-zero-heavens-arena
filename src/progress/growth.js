@@ -96,10 +96,10 @@ function signatureOf(fid) {
 
 /* the four command categories the menu is built from */
 const CATEGORIES = [
-  { key: "STRIKE", label: "STRIKE", hint: "punches, kicks, elbows, knees" },
-  { key: "GRAPPLE", label: "GRAPPLE", hint: "throws, takedowns, submissions" },
-  { key: "GUARD", label: "GUARD", hint: "block, parry, recover stamina" },
-  { key: "SIGNATURE", label: "SIGNATURE", hint: "your finisher - needs a full meter" },
+  { key: "STRIKE", label: "⚔ ATTACK", hint: "punches, kicks, elbows, knees" },
+  { key: "GRAPPLE", label: "🤼 GRAPPLE", hint: "throws, takedowns, submissions" },
+  { key: "GUARD", label: "🛡 DEFENSE", hint: "block, parry, recover stamina" },
+  { key: "SIGNATURE", label: "★ SPECIAL", hint: "your finisher - needs a full meter" },
 ];
 const CATEGORY_OF = { STRIKE: "STRIKE", THROW: "GRAPPLE", SUB: "GRAPPLE", SETUP: "GRAPPLE", GUARD: "GUARD" };
 

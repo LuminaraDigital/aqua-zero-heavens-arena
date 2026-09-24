@@ -20,7 +20,7 @@ module.exports = function (h) {
   const A = api;
   const X = (src) => A.exec(src);
   const J = (src) => JSON.parse(A.exec("JSON.stringify(" + src + ")"));
-  const fresh = () => A.exec("SAVE=DEF_SAVE(); G.adv=null; G.runEnd=null; G.challengePick=null; G.openTier=0; persist(); 1");
+  const fresh = () => A.exec("SAVE=DEF_SAVE(); G.adv=null; G.runEnd=null; G.challengePick=null; G.challengeMastery=false; G.openTier=0; persist(); 1");
 
   /* a hero whose own arts do NOT include the discipline we are about to buy,
      so a bought pass is visibly an ADDITION rather than a coincidence */
@@ -317,11 +317,19 @@ module.exports = function (h) {
     ok(X("lbBoardNow(dayKey()).length") === 0, "and there is nothing cached to draw");
     ok(J("lbBoardNow(dayKey())").length === 0 && Array.isArray(J("lbBoardNow(dayKey())")),
        "the synchronous read a scene uses is always an array, never a promise");
-    X("G.scene=S.MENU; G.menuSel=menuItems().findIndex(it=>it[2]==='daily'); 1");
-    press("a");
-    ok(scene() === "DAILY", "the daily is still reachable from the menu", scene());
-    frames(3);
-    ok(scene() === "DAILY", "and the screen renders with the board line on it");
+    /* Daily is hidden behind AZHA_SHELVED_MODES (plan item C3): the row is
+       present exactly when the build flag is on. The check reads the page's
+       own gate rather than assuming which build is under test, so the same
+       suite passes on the default build and on an AZHA_SHELVED=0 build. */
+    const modesOn = !!A.exec("AZHA_SHELVED_MODES");
+    ok(A.menuGoTo("daily") === modesOn,
+      "the daily row is present exactly when the flag is on (flag " + modesOn + ")");
+    if (!modesOn) {
+      ok(A.G.scene !== "DAILY", "the default build never opens the daily screen");
+      A.exec("AZHA_SHELVED_MODES = true;");
+      ok(A.menuGoTo("daily") === true, "flipping the gate restores the row");
+      A.exec("AZHA_SHELVED_MODES = false;");
+    }
     press("b");
     ok(scene() === "MENU", "B backs out");
   }
@@ -413,12 +421,13 @@ module.exports = function (h) {
     ok(rows.slice(1).every((r) => X("!!CHALLENGE_BY_ID['" + r.id + "'].test")),
        "and only the ones a single fight can settle");
     X("SAVE.titles=CHALLENGES.filter(c=>c.test).map(c=>c.id); 1");
-    ok(J("challengeRows()").length === 1, "an objective already earned is not offered again");
+    ok(J("challengeRows()").length > 1, "when every title is owned, mastery replays stay on the list");
+    ok(J("challengeRows()").slice(1).every((r) => r.mastery), "and they are flagged mastery");
     fresh();
   }
   {
     fresh();
-    X("G.scene=S.MENU; G.menuSel=menuItems().findIndex(it=>it[2]==='chal'); 1");
+    X("G.scene=S.MENU; menuGoTo('chal'); 1");
     press("a");
     ok(scene() === "CHALLENGE", "CHALLENGE RUN is on the menu and opens", scene());
     frames(2);
@@ -431,14 +440,27 @@ module.exports = function (h) {
     press("a");
     ok(scene() === "MAP", "which starts", scene());
     ok(X("G.adv.challenge") === want, "carrying its terms", X("G.adv.challenge"));
+    ok(X("G.challengePick") === null, "and the pick is consumed so it cannot leak");
     ok(X("G.adv.challengeDone") === false, "not yet met");
     frames(2);
     ok(scene() === "MAP", "and the field draws the objective without throwing");
   }
   {
+    // NEW ADVENTURE must not inherit a leftover challenge pick
+    fresh();
+    X("G.challengePick='untouched'; G.scene=S.MENU;" +
+      "menuGoTo('adv'); 1");
+    press("a");
+    ok(X("G.challengePick") === null, "NEW ADVENTURE clears a leftover standing objective");
+    ok(X("G.selMode") === "adventure", "and still opens fighter select");
+    fresh();
+  }
+  {
     // meeting it pays on top, once, at the end of the run
     fresh();
     X("G.challengePick='untouched'; G.adv=newAdv(0,0); G.adv.stage=2; G.adv.won=4; newField(G.adv); 1");
+    ok(X("G.challengePick") === null && X("G.adv.challenge") === "untouched",
+       "newAdv consumes the pick onto the run");
     X("startDuel({fromAdv:true,oppFid:3,oppHp:90,oppPool:[0,1,2,3,4],oppLv:4,stage:1});" +
       "G.duel.e.hp=0; G.duel.stats.dmgTaken=0; endDuel(G.duel); 1");
     ok(X("G.adv&&G.adv.challengeDone") === true, "the bell notices the objective was met");
@@ -448,11 +470,40 @@ module.exports = function (h) {
     ok(paid <= X("META_CONFIG.awardCap"), "inside the same cap as everything else", paid);
     fresh();
   }
+  {
+    // already owning the title must not block marking the run objective met
+    fresh();
+    X("SAVE.titles=['untouched']; G.adv=newAdv(0,0,{challenge:'untouched'});" +
+      "G.adv.stage=1; G.adv.won=0; newField(G.adv); 1");
+    X("startDuel({fromAdv:true,oppFid:3,oppHp:90,oppPool:[0,1,2,3,4],oppLv:4,stage:1});" +
+      "G.duel.e.hp=0; G.duel.stats.dmgTaken=0; endDuel(G.duel); 1");
+    ok(X("G.adv&&G.adv.challengeDone") === true,
+       "meeting the terms marks the run even when the title is already owned");
+    fresh();
+  }
+  {
+    /* giant_killer is an EPIC title and the ladder is where it is won. It
+       briefly tested the gap alone, which made it collectable in an ordinary
+       adventure bout; the gate is back, so the gap has to be crossed on the
+       ladder. */
+    fresh();
+    const st = J("newDuelStats()");
+    st.win = true; st.ranked = true; st.myRankIndex = 0; st.opponentRankIndex = 3;
+    ok(X("!!CHALLENGE_BY_ID.giant_killer.test(" + JSON.stringify(st) + ")"),
+       "a three-grade gap on the ladder earns Giant Killer");
+    st.opponentRankIndex = 2;
+    ok(!X("!!CHALLENGE_BY_ID.giant_killer.test(" + JSON.stringify(st) + ")"),
+       "and a smaller gap does not");
+    st.opponentRankIndex = 3; st.ranked = false;
+    ok(!X("!!CHALLENGE_BY_ID.giant_killer.test(" + JSON.stringify(st) + ")"),
+       "nor does the same gap outside ranked");
+    fresh();
+  }
 
   section("both new screens are reachable, drawable and leavable");
   {
     fresh();
-    X("G.scene=S.MENU; G.menuSel=menuItems().findIndex(it=>it[2]==='renown'); 1");
+    X("G.scene=S.MENU; menuGoTo('renown'); 1");
     press("a");
     ok(scene() === "RENOWN", "the renown wall opens from the menu", scene());
     frames(3);

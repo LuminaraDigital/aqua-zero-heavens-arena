@@ -176,6 +176,22 @@ const META_OPEN_TIERS = [
 MI("open_stage", "Hard Opening", "opens a deeper starting stage that pays a premium all run",
    "OPENING", 60, 2, 2, { kind: "open", tiers: 1 });
 
+/* --- adventure permanent perks --- */
+const ADV_PERKS = {};
+const ADV_PERK_IDS = [];
+function defineAdvPerk(id, name, desc, tag, price, tiers, step, grant) {
+  ADV_PERKS[id] = { id, name, desc, tag: tag || "CAMP", price, tiers: tiers || 1, step: step || 1, grant: grant || {} };
+  ADV_PERK_IDS.push(id);
+}
+defineAdvPerk("adv_focus", "Starting Focus", "Adventure: start every combat with +1 Focus point",
+   "CAMP", 85, 2, 1.6, { focus: 1 });
+defineAdvPerk("adv_grit", "Iron Grit", "Adventure: +10% maximum health ceiling",
+   "CAMP", 95, 2, 1.5, { hpMul: 0.10 });
+defineAdvPerk("adv_second_wind", "Second Wind", "Adventure: survive a fatal blow once per run at 20% health",
+   "CORNER", 150, 1, 1, { revives: 1 });
+defineAdvPerk("adv_corner", "Field Bag Slot", "Adventure: carry +1 extra corner consumable into every fight",
+   "CORNER", 70, 2, 1.6, { slots: 1 });
+
 const META_BUY_REASON = {
   ok: "bought",
   bad_save: "no renown ledger on this save",
@@ -238,6 +254,12 @@ function metaNormalize(block) {
       const t = metaInt(owned[id], 0, META_ITEMS[id].tiers);
       if (t > 0) out.owned[id] = t;
     });
+    ADV_PERK_IDS.forEach((id) => {
+      if (metaSafeKey(id)) return;
+      if (!Object.prototype.hasOwnProperty.call(owned, id)) return;
+      const t = metaInt(owned[id], 0, ADV_PERKS[id].tiers);
+      if (t > 0) out.owned[id] = t;
+    });
   }
   if (out.earned < out.renown) out.earned = out.renown;   // lifetime cannot be under the wallet
   return out;
@@ -290,6 +312,7 @@ function metaRunTally(run) {
     cleared: !!(r.cleared || r.bossBeaten),
     ng: metaInt(r.ng, 0, META_AWARD.ngLevelCap),
     openTier: metaInt(r.openTier, 0, META_OPEN_TIERS.length - 1),
+    renownMul: (typeof r.renownMul === "number" && r.renownMul > 0) ? r.renownMul : 1,
   };
 }
 
@@ -314,7 +337,8 @@ function metaAwardFor(run) {
 
   const ngMul = Math.min(META_AWARD.ngCap, META_AWARD.ngStep * t.ng);
   const openMul = Math.min(META_AWARD.openCap, META_AWARD.openStep * t.openTier);
-  const mult = 1 + ngMul + openMul;
+  const rMul = (t.renownMul && t.renownMul !== 1) ? t.renownMul : 1;
+  const mult = (1 + ngMul + openMul) * rMul;
 
   const total = metaInt(sub * mult, 1, META_CONFIG.awardCap);
   return { total, lines, mult, ngMul, openMul, subtotal: sub, tally: t };
@@ -340,7 +364,7 @@ function metaCredit(block, amount) {
    BUYING
    --------------------------------------------------------------------- */
 const metaTier = (block, id) => {
-  const it = metaItem(id);
+  const it = metaItem(id) || (typeof ADV_PERKS !== "undefined" && ADV_PERKS[id]);
   if (!it) return 0;
   const owned = (block && block.owned) || {};
   return metaInt(Object.prototype.hasOwnProperty.call(owned, id) ? owned[id] : 0, 0, it.tiers);
@@ -456,7 +480,33 @@ function metaRunPool(save) {
       for (let i = 1; i <= top; i++) if (pool.openStages.indexOf(META_OPEN_TIERS[i]) < 0) pool.openStages.push(META_OPEN_TIERS[i]);
     }
   });
+  ADV_PERK_IDS.forEach((id) => {
+    const tier = metaTier(meta, id);
+    if (tier <= 0) return;
+    pool.owned[id] = tier;
+    const g = ADV_PERKS[id].grant || {};
+    if (g.focus) pool.startFocus = (pool.startFocus || 0) + (g.focus * tier);
+    if (g.hpMul) pool.ironGritMul = (pool.ironGritMul || 0) + (g.hpMul * tier);
+    if (g.revives) pool.revives = (pool.revives || 0) + (g.revives * tier);
+    if (g.slots) pool.cornerSlots += (g.slots * tier);
+  });
   return pool;
+}
+
+function buyAdvPerk(save, id) {
+  if (!metaHasBlock(save)) return { ok: false, reason: "bad_save" };
+  const p = ADV_PERKS[id];
+  if (!p) return { ok: false, reason: "unknown_item" };
+  const meta = save.meta;
+  if (!meta.owned || typeof meta.owned !== "object") meta.owned = {};
+  const cur = meta.owned[id] || 0;
+  if (cur >= p.tiers) return { ok: false, reason: "maxed" };
+  const cost = Math.round(p.price * Math.pow(p.step, cur));
+  if (meta.renown < cost) return { ok: false, reason: "cannot_afford" };
+  meta.renown -= cost;
+  meta.spent += cost;
+  meta.owned[id] = cur + 1;
+  return { ok: true, reason: "bought", tier: cur + 1, cost };
 }
 
 /* the opening the run elected to take, resolved against what is owned -

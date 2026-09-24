@@ -126,7 +126,15 @@ window.i18n = (function() {
         if (dictionary[defaultLang][category] && dictionary[defaultLang][category][key]) {
             return dictionary[defaultLang][category][key];
         }
-        return `${category}.${key}`;
+        if ((category === "techniques" || category === "tech") && typeof TECH !== "undefined" && TECH[key]) {
+            return TECH[key].name || key;
+        }
+        if ((category === "fighters" || category === "dossiers") && typeof FIGHTERS !== "undefined") {
+            if (typeof key === "number" && FIGHTERS[key]) return FIGHTERS[key].name;
+            const match = FIGHTERS.find(function(f) { return f && (f.id === key || f.name === key); });
+            if (match) return match.name;
+        }
+        return (typeof key === "string" && key.indexOf(".") < 0) ? key : `${category}.${key}`;
     }
 
     function getSupportedLanguages() {

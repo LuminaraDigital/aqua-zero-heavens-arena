@@ -1,15 +1,18 @@
 # Aqua Zero Heavens Arena — architecture
 
 One self-contained HTML page, built from source modules. Offline-first.
-Optional Supabase auth and cloud saves when `AZHA_SUPABASE_*` is set at build
-time (see README and ADR 0005). No runtime npm dependencies in the page.
+Supabase auth and cloud saves, the TON wallet path and P2P WebRTC are
+**shelved**: the code and its suites stay, none of them is on the default
+path, and each is inert until its build env says otherwise (see README and
+ADR 0005). No runtime npm dependencies in the page.
 
 ## Building
 
 ```bash
 node tools/build.js                     # bundles src/ into the page
-node tests/run-tests.js                 # 1,238 checks
-node tools/audit-balance.js 6           # roster balance, 3,600 simulated fights
+node tests/run-tests.js                 # every suite
+node tools/audit-balance.js 4           # roster balance, whole roster vs itself
+node tools/gen-docs.js                  # re-measure and rewrite the block below
 node tools/tune-roster.js 6 3           # closed-loop rebalance
 node tools/build-card-data.js --check aqua-zero-heavens-arena.html
 ```
@@ -43,8 +46,10 @@ turn resolves in initiative order, and four things decide every exchange:
 Range is `LONG → MID → CLINCH → GROUND` and it *travels* — one step at a
 time, unless a technique earns more. A committed takedown covers two; a hip
 throw has to tie up first. This matters: before it was enforced, takedowns
-teleported striking-range to mat and the two middle ranges held **6.2%** of
-all turns between them. They now hold **28%**.
+teleported striking-range to mat and the two middle ranges were a rounding
+error in the turn count. The live split is in the generated table under
+"Balance is measured" - if MID and CLINCH collapse again, that table says so
+before a player has to feel it.
 
 Position is `CENTRE → ROPES → CORNER`, driven by a pressure meter. Cornering
 is earned over 2-3 turns of landed work, escapable by spending air, and worth
@@ -73,8 +78,8 @@ Three separate decisions, three different currencies:
   techniques from *any* discipline, permanently, for this run. Offers are
   capped by a per-stage power budget so a stage-1 pick can never be
   run-winning.
-- **Benefits** (`src/data/benefits.js`) — 26 stacking camp modifiers, one
-  of three per stage clear — plus 5 **EDGE** benefits that each break one
+- **Benefits** (`src/data/benefits.js`) — stacking camp modifiers, one
+  of three per stage clear — plus the **EDGE** benefits that each break one
   stated rule (a fourth chain link, a free opener, free escapes, glass
   cannon, doubled purses). EDGEs never appear at camp; they are shop
   contraband priced at ~2 stages of income.
@@ -109,17 +114,49 @@ usage, category mix and range distribution. `tools/tune-roster.js` closes
 the loop: it measures, corrects each fighter toward parity, rebuilds and
 re-measures until the spread is within tolerance.
 
+`node tools/audit-balance.js 4 --competitive` adds a same-tier finish-rate
+report (overall gap at most 6), so mismatch-heavy random pools do not
+distort KO/decision calibration.
+
 The corrections live in `src/data/roster-tune.js`, generated and readable,
-folded in by `traitsOf()`. The dossiers themselves stay honest — a fighter's
+folded in by `traitsOf()`. The dossiers themselves stay honest - a fighter's
 listed attributes remain what the source says, and the balance thumb sits
 beside them where it can be argued with.
 
-Current: **60.4% → 41.3%, a 19.1-point spread** across 25 fighters, down from
-65 points before tuning. The tool's own verdict is still TIGHT, but this has
-drifted from the 13.7 points recorded after the ringcraft/tell pass — combat
-data changed without a re-tune. `node tools/tune-roster.js 6 3` closes it
-again, and will alter balance, so it is a deliberate decision rather than
-housekeeping.
+Everything between the markers below is written by `node tools/gen-docs.js`,
+which runs the audit and splices its output in. No figure in it is typed by a
+human, and this document once paid for that: it claimed a tight roster while
+the audit was printing BROKEN. `node tools/gen-docs.js --check` now fails CI
+when the committed block stops matching a fresh run, so a combat change that
+moves the roster cannot land with this page still describing the old one.
+The same measurements in machine-readable form are in
+`docs/balance-report.json`, with the timestamp and commit they came from.
+
+Read the block as one deterministic sweep, not a law. Every fight is seeded
+from (fighterA, fighterB, rep), so a given build always prints the same
+figures and a figure that moved means the build moved. Turning them into
+pass/fail thresholds is a separate job: `tools/check-balance-gate.js` holds
+the gates, and the targets they ratchet toward are in
+`docs/IMPLEMENTATION_PLAN.md`.
+
+<!-- BEGIN GENERATED BALANCE -->
+<!-- Written by `node tools/gen-docs.js`. Do not edit between the markers:
+     the next run overwrites it and `node tools/gen-docs.js --check` fails CI. -->
+
+Measured by `node tools/audit-balance.js 4` - 2,400 fights, whole roster against itself, AI on both sides at level 9 with no benefits.
+The timestamp and the commit these numbers came from are in `docs/balance-report.json`.
+
+| Metric | Measured |
+|---|---|
+| Roster win rate | 62.5% (Randall Stevens) down to 47.9% (Derek Nichols), a 14.6-point gap across 25 fighters |
+| Audit's own verdict | TIGHT - the roster is competitive |
+| Fighters sharing a printed extreme | 2 (1 at the top rate, 2 at the bottom) |
+| Discipline win rate | 58.3% (Kenpo Karate) down to 50.0% (Submission Grappling), a 8.3-point gap across 19 disciplines |
+| Share of turns by range | LONG 25.2% / MID 26.4% / CLINCH 18.0% / GROUND 30.5% |
+| How fights end | submission 33.4% / strike 41.5% |
+| Fight length | 15.4 turns on average, 0.0% hit the 60-turn cap |
+| Techniques the AI ever throws | 264 of 427 (61.8% of the dex) |
+<!-- END GENERATED BALANCE -->
 
 ## The presentation layer
 
@@ -149,14 +186,14 @@ Three rules the layer runs on, each of which was a bug before it was a rule:
    before the duel branch, so a fight nobody was playing cannot write mastery,
    records or the W/L table into a save.
 
-The tale of the tape is a duel **phase** (`D.TAPE`), not a scene, because four
-tests press A on SELECT and assert `DUEL` on the next line. Adventure skips it
+The tale of the tape is a duel **phase** (`D.TAPE`), not a scene, because the
+navigation tests press A on SELECT and assert `DUEL` on the next line. Adventure skips it
 — `rBrief` is the same card by another name.
 
 ## Layout
 
 ```
-src/data/        techniques (425), disciplines (20), benefits, challenges,
+src/data/        techniques, disciplines, benefits, challenges,
                  archetypes, stories, matchups, roster-tune
 src/battle/      resolve, order, effects, position, sequence, intent, ai
 src/progress/    growth, draft, mastery, save-backup, ranking/
@@ -164,8 +201,9 @@ src/modes/       daily, shop, attract
 src/ui/          anim, music, matchup, entrance, results
 assets/rom/      romdata, bios, art - the build's inputs
 tools/           build-card-data, import-techniques, import-portrait,
-                 embed-logo, embed-arena, audit-balance, tune-roster
-tests/           17 suites, 1,238 checks
+                 embed-logo, embed-arena, audit-balance, tune-roster,
+                 check-balance-gate, gen-docs
+tests/           one suite per system, all listed in run-tests.js's SUITES
 ```
 
 ## Rules that are not negotiable

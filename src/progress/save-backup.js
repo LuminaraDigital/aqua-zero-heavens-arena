@@ -252,7 +252,7 @@ function sanitizePlayerRanking(raw) {
   if (typeof raw.playerId === "string") out.playerId = String(raw.playerId).slice(0, PLAYER_ID_MAX);
   const nums = [
     "promotionPoints", "rankIndex", "peakRankIndex",
-    "wins", "losses", "totalMatches", "lastRankChangeAt", "streak",
+    "wins", "losses", "totalMatches", "lastRankChangeAt", "streak", "bestStreak",
   ];
   for (let i = 0; i < nums.length; i++) {
     const k = nums[i];
@@ -261,8 +261,26 @@ function sanitizePlayerRanking(raw) {
   return out;
 }
 
+function sanitizeBeltTests(raw) {
+  if (typeof normalizeBeltTests === "function") return normalizeBeltTests(raw);
+  return { cleared: [], pending: null };
+}
+
+function sanitizeRankedSession(raw) {
+  if (raw == null) return null;
+  if (!isPlainObject(raw) || hasDangerousKey(raw)) return null;
+  const out = {};
+  const nums = ["hero", "bouts", "wins", "losses", "peakRankIndex", "startPoints", "startRankIndex"];
+  for (let i = 0; i < nums.length; i++) {
+    const k = nums[i];
+    if (typeof raw[k] === "number" && isFinite(raw[k])) out[k] = raw[k];
+  }
+  if (typeof raw.done === "boolean") out.done = raw.done;
+  return out;
+}
+
 function sanitizeRanking(raw) {
-  if (raw == null) return { players: {}, audit: [] };
+  if (raw == null) return { players: {}, audit: [], beltTests: sanitizeBeltTests(null), session: null };
   if (!isPlainObject(raw) || hasDangerousKey(raw)) return null;
   const playersIn = isPlainObject(raw.players) && !hasDangerousKey(raw.players) ? raw.players : null;
   if (raw.players != null && playersIn == null) return null;
@@ -299,7 +317,12 @@ function sanitizeRanking(raw) {
       audit.push(entry);
     }
   }
-  return { players: players, audit: audit };
+  return {
+    players: players,
+    audit: audit,
+    beltTests: sanitizeBeltTests(raw.beltTests),
+    session: sanitizeRankedSession(raw.session),
+  };
 }
 
 function sanitizeIntMap(raw, maxEntries) {
@@ -369,7 +392,7 @@ function sanitizeSavePayload(save) {
     daily = sanitizeDaily(save.daily);
     if (daily === null) return null;
   }
-  let ranking = { players: {}, audit: [] };
+  let ranking = sanitizeRanking(null);
   if (save.ranking != null) {
     ranking = sanitizeRanking(save.ranking);
     if (ranking === null) return null;
@@ -384,7 +407,7 @@ function sanitizeSavePayload(save) {
     sound: save.sound !== false,
     music: save.music !== false,
     diff: typeof save.diff === "number" && isFinite(save.diff)
-      ? Math.max(0, Math.min(2, save.diff | 0))
+      ? Math.max(0, Math.min(typeof DIFFS !== "undefined" ? DIFFS.length - 1 : 3, save.diff | 0))
       : 1,
     motion: save.motion !== false,
     mastery: sanitizeIntMap(save.mastery, UNLOCKED_MAX),
@@ -412,17 +435,22 @@ function sanitizeSavePayload(save) {
     customFighters: Array.isArray(save.customFighters) ? save.customFighters.filter(isPlainObject).slice(0, 10) : [],
     recentReplays: Array.isArray(save.recentReplays) ? save.recentReplays.filter(isPlainObject).slice(0, 10) : [],
     weekly: isPlainObject(save.weekly) && !hasDangerousKey(save.weekly) ? save.weekly : null,
+    onboarding: typeof Onboarding !== "undefined" ? Onboarding.normalize(save.onboarding) : null,
     fr: sanitizeFighterRecords(save.fr),
   };
 
   if (isPlainObject(save.rec) && !hasDangerousKey(save.rec)) {
     const rec = {};
-    for (const k of ["duels", "wins", "losses", "perfect", "stages", "bestSurv", "bestEndless", "ngplus"]) {
+    for (const k of ["duels", "wins", "losses", "perfect", "stages", "bestSurv", "bestEndless", "ngplus", "gauntletVictories", "gauntletHighScore", "gauntletWins", "weeklyVictories", "bestWeekly", "bestWeeklyTier"]) {
       const v = save.rec[k];
       if (typeof v === "number" && isFinite(v) && v >= 0) rec[k] = v | 0;
     }
     out.rec = rec;
   }
+
+  out.exhib = typeof ExhibitionMode !== "undefined" && ExhibitionMode.normalizeCareer
+    ? ExhibitionMode.normalizeCareer(save.exhib)
+    : (isPlainObject(save.exhib) && !hasDangerousKey(save.exhib) ? save.exhib : null);
 
   return out;
 }

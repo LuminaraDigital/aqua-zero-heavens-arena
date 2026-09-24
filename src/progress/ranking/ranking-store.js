@@ -15,7 +15,10 @@
 const YOU = "you";                       // the local player's id
 
 function makeSaveStore(save) {
-  if (!save.ranking) save.ranking = { players: {}, audit: [] };
+  if (!save.ranking) save.ranking = { players: {}, audit: [], beltTests: emptyBeltTests(), session: null };
+  if (!save.ranking.players) save.ranking.players = {};
+  if (!save.ranking.audit) save.ranking.audit = [];
+  if (!save.ranking.beltTests) save.ranking.beltTests = emptyBeltTests();
   const R = save.ranking;
   return {
     get: (id) => R.players[id] || null,
@@ -57,7 +60,8 @@ function makeRankingApi(service, store, persist) {
           nextRank: getNextRank(rank), peakRank: rankByIndex(r.peakRankIndex || 0),
           wins: r.wins, losses: r.losses, totalMatches: r.totalMatches,
           winRate: r.totalMatches ? Math.round((100 * r.wins) / r.totalMatches) : 0,
-          streak: r.streak || 0, lastRankChangeAt: r.lastRankChangeAt,
+          streak: r.streak || 0, bestStreak: r.bestStreak || 0,
+          lastRankChangeAt: r.lastRankChangeAt,
         },
       };
     },
@@ -65,12 +69,13 @@ function makeRankingApi(service, store, persist) {
       if (!body || !body.winnerId || !body.loserId) return { ok: false, error: "winnerId and loserId are required" };
       if (body.winnerId === body.loserId) return { ok: false, error: "a fighter cannot beat themselves" };
       const result = service.applyMatchResult(body.winnerId, body.loserId,
-        { matchId, matchType: body.matchType, meta: body.meta });
+        { matchId, matchType: body.matchType, pointScale: body.pointScale, meta: body.meta });
       return commit({ ok: true, data: result });
     },
     getLeaderboard(limit) {
       const all = store.all();
-      const rows = Object.keys(all).map((id) => ({
+      /* CPU grades are re-seeded every bout and must not clutter the board. */
+      const rows = Object.keys(all).filter((id) => String(id).slice(0, 4) !== "cpu:").map((id) => ({
         playerId: id, points: all[id].promotionPoints, rank: getRankForPoints(all[id].promotionPoints),
         wins: all[id].wins, losses: all[id].losses,
       }));
@@ -78,6 +83,32 @@ function makeRankingApi(service, store, persist) {
       return { ok: true, data: rows.slice(0, limit || 20) };
     },
     getAuditLog(limit) { return { ok: true, data: (store.audit ? store.audit() : []).slice(0, limit || 20) }; },
+  };
+}
+
+/* Ranked session snapshot on the save so a reload can resume the climb. */
+function writeRankedSession(save, session) {
+  if (!save.ranking) save.ranking = { players: {}, audit: [], beltTests: emptyBeltTests(), session: null };
+  if (!session) { save.ranking.session = null; return null; }
+  save.ranking.session = {
+    hero: session.hero | 0,
+    bouts: session.bouts | 0,
+    wins: session.wins | 0,
+    losses: session.losses | 0,
+    peakRankIndex: session.peakRankIndex | 0,
+    startPoints: +session.startPoints || 0,
+    startRankIndex: session.startRankIndex | 0,
+    done: !!session.done,
+  };
+  return save.ranking.session;
+}
+function readRankedSession(save) {
+  const s = save && save.ranking && save.ranking.session;
+  if (!s || typeof s !== "object") return null;
+  return {
+    hero: s.hero | 0, bouts: s.bouts | 0, wins: s.wins | 0, losses: s.losses | 0,
+    peakRankIndex: s.peakRankIndex | 0, startPoints: +s.startPoints || 0,
+    startRankIndex: s.startRankIndex | 0, done: !!s.done,
   };
 }
 

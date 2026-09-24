@@ -382,7 +382,17 @@ function resolveSequence(d, side, foe, seq, rnd, execFn) {
 
   if (out.broken) {
     out.stamLost = sequenceBreakCost(side, s, out.brokenAt);
-    side.stam = Math.max(0, side.stam - out.stamLost);
+    const rem = side.stam - out.stamLost;
+    if (rem < 0) {
+      side.stam = 0;
+      if (typeof addStatus === "function") {
+        addStatus(side, "STAMINA_BREAK");
+        addStatus(side, "WINDED");
+      }
+    } else {
+      side.stam = rem;
+      if (side.stam === 0 && typeof addStatus === "function") addStatus(side, "WINDED");
+    }
     out.expose = C.brokenStatus;
     /* caught mid-combination - posture gone for their answer */
     if (typeof addStatus === "function") addStatus(side, C.brokenStatus);

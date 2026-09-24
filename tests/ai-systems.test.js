@@ -182,4 +182,86 @@ module.exports = function (h) {
   ok(toggledCoach === "compact", "coachMode cycled to compact");
   api.SettingsGUI.toggleAISetting("coachMode");
   api.SettingsGUI.toggleAISetting("coachMode"); // back to full
+
+  // =========================================================================
+  // 6. Near-tie technique rotation (dex coverage layer)
+  //    aiChooseTechnique rotates only among candidates within AI_TIE_EPS of
+  //    the winning score, same class only, preferring fewest uses this duel.
+  //    Pinned here: determinism, the diversity delta, and the bounded
+  //    property - a clearly better technique always keeps the turn.
+  // =========================================================================
+  h.section("Near-tie rotation");
+
+  ok(typeof api.aiChooseTechnique === "function", "aiChooseTechnique exported");
+  // the window is a page-level const; read it from the live page the harness runs
+  const eps = api.exec("AI_TIE_EPS");
+  ok(typeof eps === "number" && eps >= 0 && eps <= 4,
+    "AI_TIE_EPS is a small bounded window (got " + eps + ")");
+
+  // A duel stub with a rich learnset so more than one candidate can score.
+  const mkDuel = () => ({ range: "MID", turn: 5,
+    p: { fid: 0, stam: 50, maxStam: 60, hp: 60, maxhp: 100, techs: Object.keys(api.TECH).slice(0, 40), sup: 0 },
+    e: { fid: 1, stam: 50, maxStam: 60, hp: 60, maxhp: 100, techs: Object.keys(api.TECH).slice(0, 40), sup: 0 } });
+
+  // (a) Determinism: a pinned rnd sequence yields an identical pick sequence.
+  let seq1 = "", seq2 = "";
+  for (let run = 0; run < 2; run++) {
+    const d = mkDuel(), side = d.p, foe = d.e;
+    let seed = 12345;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    let picks = "";
+    for (let i = 0; i < 24; i++) {
+      const pick = api.aiChooseTechnique(d, side, foe, { rnd, noise: 0 }).tech;
+      picks += pick.id + ",";
+      side.stam = Math.max(8, side.stam - 2);   // vary state so scores move
+    }
+    if (run === 0) seq1 = picks; else seq2 = picks;
+  }
+  ok(seq1 === seq2, "pinned rnd + same duel state -> identical 24-pick sequence");
+
+  // (b) Diversity: a long stretch rotates through several techniques and no
+  //     single one monopolizes it - the repetition engine the rotation
+  //     replaced threw the same handful every turn.
+  const d = mkDuel(), side = d.p, foe = d.e;
+  let seedD = 777;
+  const rndD = () => { seedD = (seedD * 1103515245 + 12345) % 2147483648; return seedD / 2147483648; };
+  const thrown = {};
+  for (let i = 0; i < 120; i++) {
+    const pick = api.aiChooseTechnique(d, side, foe, { rnd: rndD, noise: 0 }).tech;
+    thrown[pick.id] = (thrown[pick.id] || 0) + 1;
+    side.stam = 10 + (i % 41);   // sweep stamina so the scoring landscape moves
+  }
+  const distinct = Object.keys(thrown).length;
+  ok(distinct >= 5,
+    "a 120-pick stretch rotates through at least 5 distinct techniques (got " + distinct + ")");
+  const maxShare = Math.max.apply(null, Object.keys(thrown).map(k => thrown[k])) / 120;
+  ok(maxShare <= 0.9,
+    "no technique takes more than 90% of a 120-pick stretch (max share " +
+    (maxShare * 100).toFixed(1) + "%)");
+
+  // (c) Bounded: the rotation only ever trades within the argmax winner's own
+  //     class. With noise 0 the scoring is rnd-independent, so the winner can
+  //     be recomputed independently each pick: the chosen technique's class
+  //     must equal that winner's class, whatever the stamina landscape does
+  //     to WHICH class wins. (Class constancy across picks was the first
+  //     draft of this check and was wrong: the winner's class legitimately
+  //     changes with stamina; the invariant is per-pick, not per-stretch.)
+  const d2 = mkDuel(), side2 = d2.p, foe2 = d2.e;
+  let seedB = 999;
+  const rndB = () => { seedB = (seedB * 1103515245 + 12345) % 2147483648; return seedB / 2147483648; };
+  let classMismatches = 0;
+  for (let i = 0; i < 60; i++) {
+    let bs = -1e9, winnerCls = null;
+    side2.techs.forEach((id) => {
+      const t = api.TECH[id];
+      if (!t) return;
+      const sc = api.scoreTechnique(d2, side2, foe2, t, 0, rndB, null);
+      if (sc > bs) { bs = sc; winnerCls = t.cls; }
+    });
+    const pick = api.aiChooseTechnique(d2, side2, foe2, { rnd: rndB, noise: 0 }).tech;
+    if (pick.cls !== winnerCls) classMismatches++;
+    side2.stam = 10 + (i % 41);
+  }
+  ok(classMismatches === 0,
+    "rotation never leaves the winning class across 60 picks (mismatches " + classMismatches + ")");
 };

@@ -19,7 +19,7 @@ var TowerMode = (function() {
         CLINCH_ONLY: "Clinch-Only Mat Rules",
         STAMINA_DRAIN: "Stamina Drain Hazards",
         NO_TELL: "No-Tell Dark Matches",
-        CAGE_WALLS: "Octagon Cage - Wall Escapes Active",
+        CAGE_WALLS: "Steel Cage Enclosure - Wall Escapes Active",
         UNDERGROUND_PIT: "Underground Pit - Uncapped Power",
         STANDARD: "Standard Rules"
     };

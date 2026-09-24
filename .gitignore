@@ -20,3 +20,11 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+# Scratch files
+scratch/
+
+# Local agent state (session plans, tool worktrees)
+.hermes/
+.claude/worktrees/
+

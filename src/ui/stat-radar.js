@@ -2,7 +2,7 @@
 // Cyber-Esports 6-Axis Stat Radar / Hexagonal Polygon Chart
 /* =====================================================================
    AQUA ZERO HEAVENS ARENA - Stat Radar Engine
-   Luminara Digital - UFC-style attribute breakdown visualization
+   Luminara Digital - dossier attribute radar visualization
    ===================================================================== */
 
 var StatRadar = (function() {
@@ -138,9 +138,116 @@ var StatRadar = (function() {
         ctx.restore();
     }
 
+    function renderComparison(ctx, centerX, centerY, radius, rawStatsA, rawStatsB, options) {
+        if (!ctx) return;
+        var opt = options || {};
+        var statsA = normalizeStats(rawStatsA);
+        var statsB = normalizeStats(rawStatsB);
+        var r = radius || 75;
+        var colorA = opt.colorA || "#22d3ee";
+        var fillA = opt.fillA || "rgba(34, 211, 238, 0.22)";
+        var colorB = opt.colorB || "#ef4444";
+        var fillB = opt.fillB || "rgba(239, 68, 68, 0.22)";
+        var gridColor = opt.gridColor || "rgba(255, 255, 255, 0.14)";
+        var labelColor = opt.labelColor || "#9ca3af";
+
+        ctx.save();
+
+        // 1. Concentric Hexagon Grid Rings
+        var rings = [0.33, 0.66, 1.0];
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = gridColor;
+
+        for (var ringIdx = 0; ringIdx < rings.length; ringIdx++) {
+            var frac = rings[ringIdx];
+            ctx.beginPath();
+            for (var a = 0; a < AXES.length; a++) {
+                var angle = AXES[a].angle;
+                var x = centerX + Math.cos(angle) * r * frac;
+                var y = centerY + Math.sin(angle) * r * frac;
+                if (a === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        // 2. Radial Spokes & Comparison Labels
+        ctx.font = "bold 9.5px Bahnschrift, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for (var i = 0; i < AXES.length; i++) {
+            var ax = AXES[i];
+            var cosA = Math.cos(ax.angle);
+            var sinA = Math.sin(ax.angle);
+
+            ctx.beginPath();
+            ctx.strokeStyle = gridColor;
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + cosA * r, centerY + sinA * r);
+            ctx.stroke();
+
+            var labelDist = r + 14;
+            var lx = centerX + cosA * labelDist;
+            var ly = centerY + sinA * labelDist;
+            ctx.fillStyle = labelColor;
+            ctx.fillText(ax.label, lx, ly);
+
+            // Left / Right stat chips
+            var vA = statsA[ax.key];
+            var vB = statsB[ax.key];
+            ctx.font = "bold 8.5px Bahnschrift, monospace";
+            ctx.fillStyle = colorA;
+            ctx.fillText(vA, lx - 14, ly + 10);
+            ctx.fillStyle = colorB;
+            ctx.fillText(vB, lx + 14, ly + 10);
+            ctx.font = "bold 9.5px Bahnschrift, sans-serif";
+        }
+
+        // 3. Draw Fighter B Polygon (Opponent)
+        ctx.beginPath();
+        for (var b = 0; b < AXES.length; b++) {
+            var axB = AXES[b];
+            var valB = Math.max(15, statsB[axB.key]);
+            var distB = (valB / 100) * r;
+            var pxB = centerX + Math.cos(axB.angle) * distB;
+            var pyB = centerY + Math.sin(axB.angle) * distB;
+            if (b === 0) ctx.moveTo(pxB, pyB);
+            else ctx.lineTo(pxB, pyB);
+        }
+        ctx.closePath();
+        ctx.fillStyle = fillB;
+        ctx.fill();
+        ctx.strokeStyle = colorB;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 4. Draw Fighter A Polygon (Hero)
+        ctx.beginPath();
+        for (var k = 0; k < AXES.length; k++) {
+            var axKey = AXES[k];
+            var statVal = Math.max(15, statsA[axKey.key]);
+            var dist = (statVal / 100) * r;
+            var px = centerX + Math.cos(axKey.angle) * dist;
+            var py = centerY + Math.sin(axKey.angle) * dist;
+            if (k === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fillStyle = fillA;
+        ctx.fill();
+        ctx.strokeStyle = colorA;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
     return {
         normalizeStats: normalizeStats,
         render: render,
+        renderComparison: renderComparison,
         getAxes: function() { return AXES; }
     };
 })();

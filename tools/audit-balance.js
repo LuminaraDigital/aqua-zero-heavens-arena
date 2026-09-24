@@ -159,3 +159,47 @@ Object.keys(discWins).sort((a, b) => (discWins[b] / discFights[b]) - (discWins[a
     const r = discWins[dd] / discFights[dd];
     console.log("  " + pct(r).padStart(6) + "  " + (A.DISCIPLINES[dd] ? A.DISCIPLINES[dd].name : dd));
   });
+
+/* Competitive same-tier finish audit (overall gap <= 6). Mismatch pools
+   over-report finishes; this mirrors Simulation Lab style calibration. */
+if (process.argv.indexOf("--competitive") >= 0) {
+  function overallOf(fid) {
+    try {
+      const b = typeof A.bioOf === "function" ? A.bioOf(fid) : null;
+      if (b && typeof b.ovr === "number") return b.ovr;
+    } catch (e) {}
+    return 80 + (fid % 10);
+  }
+  const tiers = { low: [], mid: [], high: [] };
+  for (let i = 0; i < N; i++) {
+    const o = overallOf(i);
+    if (o < 68) tiers.low.push(i);
+    else if (o < 80) tiers.mid.push(i);
+    else tiers.high.push(i);
+  }
+  console.log("\n-- COMPETITIVE FINISH RATES (gap <= 6 overall) --");
+  ["low", "mid", "high"].forEach((band) => {
+    const pool = tiers[band];
+    let n = 0, finishes = 0, decisions = 0;
+    for (let i = 0; i < pool.length; i++) {
+      for (let j = i + 1; j < pool.length; j++) {
+        if (Math.abs(overallOf(pool[i]) - overallOf(pool[j])) > 6) continue;
+        for (let r = 0; r < Math.max(2, Math.min(4, REPS)); r++) {
+          const seed = pool[i] * 7919 + pool[j] * 104729 + r * 17 + band.length * 3;
+          const beforeSubs = subFinishes, beforeStrikes = strikeFinishes, beforeFights = fights, beforeTimeouts = timeouts;
+          simFight(pool[i], pool[j], rngFrom(seed));
+          n++;
+          const finished = (subFinishes + strikeFinishes) > (beforeSubs + beforeStrikes);
+          const timed = timeouts > beforeTimeouts;
+          if (finished) finishes++;
+          else if (timed || fights > beforeFights) decisions++;
+        }
+      }
+    }
+    const finishRate = n ? finishes / n : 0;
+    console.log("  " + band.padEnd(5) + " n=" + String(n).padStart(4) +
+      "  finish " + pct(finishRate) +
+      "  (decision-ish " + pct(n ? (n - finishes) / n : 0) + ")");
+  });
+  console.log("  note: synthetic competitive pairs; use career results for economy truth");
+}

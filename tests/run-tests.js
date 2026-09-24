@@ -12,6 +12,7 @@ const boot = require("./harness");
 
 const SUITES = {
   ranking: "./ranking.test",
+  belt_career: "./belt-career.test",
   battle: "./battle.test",
   combat: "./combat.test",
   game: "./game.test",
@@ -42,6 +43,28 @@ const SUITES = {
   boss_phases: "./boss-phases.test",
   narrative_events: "./narrative-events.test",
   interactive_3d_bg: "./interactive-3d-bg.test",
+  attack_vfx: "./attack-vfx.test",
+  modern_ui: "./modern-ui.test",
+  gauntlet: "./gauntlet.test",
+  weekly_mutator: "./weekly-mutator.test",
+  challenge_run: "./challenge-run.test",
+  exhibition: "./exhibition.test",
+  mode_continuity: "./mode-continuity.test",
+  onboarding: "./onboarding.test",
+  three_engine: "./three-engine.test",
+  venue_3d_camera: "./venue-3d-camera.test",
+  relics: "./relics.test",
+  mma_systems: "./mma-systems.test",
+  warriors_systems: "./warriors-systems.test",
+  modern_mma: "./modern-mma.test",
+  judging: "./judging.test",
+  corner_protocol: "./corner-protocol.test",
+  weight_cut: "./weight-cut.test",
+  career_arcs: "./career-arcs.test",
+  rivalry_heat: "./rivalry-heat.test",
+  camp_focus: "./camp-focus.test",
+  style_traits: "./style-traits.test",
+  docs: "./docs.test",
 };
 
 const args = process.argv.slice(2);

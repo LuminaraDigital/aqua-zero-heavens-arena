@@ -58,8 +58,13 @@ P("CORNER", "IN THE CORNER",
   { pow: 1.18, acc: 1.05 },
   { pow: 0.94, acc: 0.96, escape: 0.38, cost: 9 });
 
+P("WALL_PINNED", "CAGE PINNED",
+  "pressed flat against the steel chainlink - dirty boxing target, wall-walk required",
+  { pow: 1.24, acc: 1.08 },
+  { pow: 0.88, acc: 0.92, escape: 0.28, cost: 12 });
+
 const POSITION_ORDER = ["CENTRE", "ROPES", "CORNER"];
-const POS_INDEX = { CENTRE: 0, ROPES: 1, CORNER: 2 };
+const POS_INDEX = { CENTRE: 0, ROPES: 1, CORNER: 2, WALL_PINNED: 2 };
 
 /* ---------------------------------------------------------------------
    style tables
@@ -228,6 +233,7 @@ function resetPosition(d) {
   d.pos = "CENTRE";
   d.cornered = null;
   d.press = { by: "p", n: 0 };
+  if (typeof resetControl === "function") resetControl(d);
   return d;
 }
 
@@ -350,5 +356,43 @@ function describePosition(d) {
   if (pos === "CENTRE" || !d.cornered) return "CENTRE RING";
   const who = positionSideName(d, d.cornered);
   const verb = who === "YOU" || who === "THEY" ? "ARE" : "IS";
+  if (pos === "WALL_PINNED") return who + " " + verb + " PINNED TO THE CAGE";
   return who + " " + verb + (pos === "CORNER" ? " CORNERED" : " ON THE ROPES");
+}
+
+/* Cage Scramble & Fence Functions */
+function isWallPinned(d, side) {
+  if (!d) return false;
+  const key = side === d.p ? "p" : "e";
+  return d.pos === "WALL_PINNED" && d.cornered === key;
+}
+
+function pinToWall(d, attackerSide, defenderSide) {
+  if (!d) return false;
+  const defKey = defenderSide === d.p ? "p" : "e";
+  d.pos = "WALL_PINNED";
+  d.cornered = defKey;
+  if (typeof addStatus === "function") {
+    addStatus(defenderSide, "WALL_PINNED");
+  }
+  return true;
+}
+
+function wallWalkGetup(d, side) {
+  if (!d || !side) return { ok: false };
+  if (side.cond && side.cond.WALL_PINNED) {
+    delete side.cond.WALL_PINNED;
+  }
+  const stamCost = 14;
+  side.stamina = Math.max(0, (side.stamina || 0) - stamCost);
+  d.range = "CLINCH";
+  d.pos = "ROPES";
+  return { ok: true, note: "Wall-walk executed: stood up against the cage to clinch." };
+}
+
+function cageSpringStrike(d, side) {
+  if (!d || !side) return { ok: false, bonus: 1 };
+  const stamCost = 16;
+  side.stamina = Math.max(0, (side.stamina || 0) - stamCost);
+  return { ok: true, bonus: 1.35, note: "Off-the-fence rebound spring strike launched!" };
 }

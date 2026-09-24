@@ -375,4 +375,203 @@ module.exports = function (h) {
     const cer = A.ceremonyBeats(A.G.result, st);
     ok(cer.list.length > 0, "the ceremony still has beats to play", cer.list.length);
   }
+
+  section("one name per corner");
+  {
+    /* an AZX Force patrol wears a borrowed roster fighter's art. The HUD
+       said AZX FORCE; the log printed that fighter's first name. */
+    h.exec("SAVE=DEF_SAVE(); persist(); G.adv=newAdv(0,0); newField(G.adv);");
+    h.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:50,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    const d = A.G.duel;
+    const hud = h.exec("oppName(G.duel)");
+    ok(hud === "AZX FORCE", "a patrol is AZX FORCE on the HUD", hud);
+    ok(h.exec("logName(G.duel,G.duel.e)") === hud.toUpperCase(),
+       "and the log tag is the same string", h.exec("logName(G.duel,G.duel.e)"));
+    ok(h.exec("foeName({tf:true,id:3})") === hud, "and so is the field's foe row");
+    const borrowed = A.FIGHTERS[d.e.fid].name.split(" ")[0].toUpperCase();
+    ok(borrowed !== "AZX", "the silhouette really is wearing a roster fighter", borrowed);
+    const mineTag = h.exec("logName(G.duel,G.duel.p)");
+    /* one exchange through the real resolver, then read the log */
+    h.frames(700);
+    h.exec("G.duel.ph=D.CMD; G.duel.t=0;");
+    h.press("a");
+    if (h.phase() === "CHAIN") h.press("b");         // throw it rather than chain it
+    h.frames(400);
+    const log = d.log.slice();
+    const tags = log.map((l) => l.replace(/^(1ST|2ND)\s+/, "").split(" - ")[0]);
+    ok(log.length > 0, "the exchange wrote a log", log.length);
+    ok(tags.every((t) => t === mineTag || t === "AZX FORCE"),
+       "every log line is tagged with a HUD name", tags.join(" | "));
+    ok(log.every((l) => l.indexOf(borrowed + " - ") < 0),
+       "and none with the borrowed fighter's", log.join(" | "));
+    /* the broadcast: resolve.js still emits the borrowed first name */
+    A.AICommentary.clearHistory();
+    const line = A.AICommentary.generateLine("COUNTER_HIT",
+      { turn: 99, fighterName: A.FIGHTERS[d.e.fid].name.split(" ")[0] });
+    ok(line && line.text.indexOf("AZX FORCE:") === 0,
+       "the commentary resolves the borrowed first name to the HUD name", line && line.text);
+    const own = A.AICommentary.generateLine("KNOCKOUT", { turn: 120, side: d.p });
+    ok(own && own.text.indexOf(mineTag + ":") === 0,
+       "and a side handed over directly names that corner", own && own.text);
+    /* a named rival is the same string on both, too */
+    h.exec("startDuel({fromAdv:true,oppFid:3,oppHp:90,oppPool:[0,1,2,3,4],oppLv:4,stage:1});");
+    ok(h.exec("logName(G.duel,G.duel.e)") === h.exec("oppName(G.duel)").toUpperCase(),
+       "a named rival's log tag is the HUD name", h.exec("logName(G.duel,G.duel.e)"));
+    ok(h.exec("sideName(G.duel,G.duel.e)") === A.FIGHTERS[3].name, "which is the roster name");
+  }
+
+  section("a silhouette never borrows the fighter you are using");
+  {
+    /* A patrol wears a roster fighter's art. The borrow drew from all 20
+       without excluding the hero, so roughly one field in twenty seated the
+       player's own man opposite them - both corners answering to the same
+       first name, and every unsided broadcast event resolving to the wrong
+       one. The HUD said AZX FORCE for the player's own stamina break. */
+    let collisions = 0, fields = 0;
+    for (let hero = 0; hero < 8; hero++) {
+      for (let stage = 1; stage <= 4; stage++) {
+        h.exec("SAVE=DEF_SAVE(); G.adv=newAdv(" + hero + ",0); G.adv.stage=" + stage + "; newField(G.adv);");
+        const borrowed = A.G.adv.map.foes.filter((f) => f.tf);
+        fields++;
+        borrowed.forEach((f) => { if (f.art === hero) collisions++; });
+        borrowed.forEach((f) => {
+          if (!(f.art >= 0 && f.art < 20)) collisions++;      // still a real roster slot
+        });
+      }
+    }
+    ok(fields === 32 && collisions === 0,
+       "across 32 fields no silhouette wears the hero's art", collisions + " collisions");
+    /* and the resolver holds even if a collision is forced on it */
+    h.exec("SAVE=DEF_SAVE(); G.adv=newAdv(0,0); newField(G.adv);");
+    h.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:50,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    h.exec("G.duel.e.fid=G.duel.p.fid;");                     // the collision, forced
+    const d = A.G.duel;
+    ok(d.e.fid === d.p.fid, "both corners are the same roster fighter");
+    ok(h.exec("oppName(G.duel)") === "AZX FORCE" && h.exec("logName(G.duel,G.duel.p)") !== "AZX FORCE",
+       "the two corners still print different names");
+    const shared = A.FIGHTERS[d.p.fid].name.split(" ")[0];
+    A.AICommentary.clearHistory();
+    const mine = A.AICommentary.generateLine("STAMINA_BREAK", { turn: 200, fighterName: shared });
+    ok(mine && mine.text.indexOf(h.exec("logName(G.duel,G.duel.p)") + ":") === 0,
+       "an unsided player-side event names the player's corner, not the patrol", mine && mine.text);
+    const theirs = A.AICommentary.generateLine("KNOCKOUT", { turn: 260, side: d.e });
+    ok(theirs && theirs.text.indexOf("AZX FORCE:") === 0,
+       "and a sided patrol event still names the patrol", theirs && theirs.text);
+  }
+
+  section("a patrol lost is weighed like a patrol won");
+  {
+    /* the same one exchange against the same silhouette got the short card
+       when it went your way and the full fight-night ceremony when it did not */
+    h.exec("SAVE=DEF_SAVE(); persist(); G.adv=newAdv(0,0); newField(G.adv);");
+    h.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:50,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    h.exec("G.duel.stats.turns=1; G.duel.stats.ranges={MID:1}; G.duel.repel=true;" +
+           "G.duel.pHp0=G.duel.p.maxhp; G.duel.p.hp=Math.round(G.duel.p.maxhp*0.7); endDuel(G.duel);");
+    const r = A.G.result;
+    ok(r.kind === "repel", "being driven off is its own result", r.kind);
+    ok(r.encounter === "patrol", "and it is stamped with the encounter's weight", r.encounter);
+    ok(h.exec("resultIsShort(G.result)"), "so it reads as a short card too");
+    const cer = A.ceremonyBeats(r, A.G.lastStats);
+    ok(!A.ceremonyHas(cer, "method") && !A.ceremonyHas(cer, "grade"),
+       "no method line and no grade slam on a lost patrol");
+    const hint = h.exec("hintFor()");
+    ok(hint.y === "" && hint.x === "", "and neither stat tab nor brag card", JSON.stringify(hint));
+    h.frames(3);
+    h.press("y");
+    ok(A.G.resTab === 0, "Y opens nothing");
+    h.press("x");
+    ok(A.G.scene === A.S.RESULT, "and X exports nothing");
+  }
+
+  section("a patrol is a short card, not a fight night");
+  {
+    /* the observed bug: a one-input win over a 50 HP silhouette showed
+       VICTORY / PERFECT and six titles at once */
+    const oneShot = (opts) => {
+      h.exec("SAVE=DEF_SAVE(); persist(); G.adv=newAdv(0,0); newField(G.adv);");
+      h.exec("startDuel(" + JSON.stringify(opts) + ");");
+      h.exec("G.duel.stats.turns=1; G.duel.stats.ranges={MID:1}; G.duel.stats.dmgDealt=50;" +
+             "G.duel.stats.dmgTaken=0; G.duel.stats.strikes=1; G.duel.e.hp=0;" +
+             "G.duel.stats.koClass='STRIKE'; G.duel.stats.koRange='LONG'; endDuel(G.duel);");
+    };
+    oneShot({ fromAdv: true, tf: true, oppFid: 3, oppHp: 50, oppPool: [0, 1, 2, 3, 4], oppLv: 1, stage: 1 });
+    const r = A.G.result;
+    ok(A.G.duel.encounter === "patrol", "a silhouette fight on the field is weighed as a patrol", A.G.duel.encounter);
+    ok(r.kind === "win" && r.encounter === "patrol", "and the result carries the weight", JSON.stringify(r));
+    const weightOf = (src) => h.exec("resultWeight(" + src + ")");
+    const shortOf = (src) => h.exec("resultIsShort(" + src + ")");
+    ok(weightOf("G.result") === "patrol" && shortOf("G.result"), "which results.js reads as a short card");
+    const titles = A.G.payout.titles;
+    ok(titles.length <= 1, "a patrol awards at most one title", titles.join(","));
+    ok(titles.length === 1 && titles[0] === "first_blood", "and it is Debutant, from the first-steps set", titles.join(","));
+    const cer = A.ceremonyBeats(r, A.G.lastStats);
+    ok(cer.short === true && cer.weight === "patrol", "the ceremony knows it is short");
+    ["art", "method", "grade", "stats"].forEach((id) => ok(!A.ceremonyHas(cer, id), "no " + id + " beat on a patrol"));
+    ok(A.ceremonyHas(cer, "payout") && A.ceremonyHas(cer, "prompt"), "only the purse and the way on");
+    const hint = h.exec("hintFor()");
+    ok(hint.y === "" && hint.x === "", "no stat tab and no brag card offered", JSON.stringify(hint));
+    h.frames(3);
+    ok(A.G.scene === A.S.RESULT && A.G.resTab === 0, "the short card renders");
+    h.press("y");
+    ok(A.G.resTab === 0 && A.G.scene === A.S.RESULT, "and Y does not open a stat page on it");
+    /* the same stat line against a named rival is the full ceremony */
+    oneShot({ fromAdv: true, oppFid: 3, oppHp: 90, oppPool: [0, 1, 2, 3, 4], oppLv: 4, stage: 1 });
+    const rr = A.G.result;
+    ok(A.G.duel.encounter === "rival" && rr.encounter === "rival", "a named opponent is a rival");
+    ok(!shortOf("G.result"), "and gets the full ceremony");
+    ok(A.G.payout.titles.length > 1, "with every title the fight earned", A.G.payout.titles.join(","));
+    const full = A.ceremonyBeats(rr, A.G.lastStats);
+    ok(A.ceremonyHas(full, "method") && A.ceremonyHas(full, "grade"), "method line and grade included");
+    ok(h.exec("hintFor()").y === "FIGHT STATS", "and the stat tab is offered");
+    /* the champion is the heaviest fight */
+    h.exec("startDuel({fromAdv:true,boss:true,oppHp:150,oppPool:[0,1,2,3,4],oppLv:9,stage:3});");
+    ok(A.G.duel.encounter === "boss", "the tower champion is weighed as the boss", A.G.duel.encounter);
+    /* other modes are untouched: an unstamped result is a full bout */
+    ok(weightOf("{kind:'rankwin'}") === "rival" && !shortOf("{kind:'vswin'}"),
+       "an unstamped result is a full bout");
+    ok(weightOf("null") === "rival" && weightOf("'win'") === "rival", "even a missing or bare one");
+  }
+
+  section("titles carry a weight and a tier");
+  {
+    ok(A.CHALLENGES.every((c) => ["patrol", "rival", "boss"].indexOf(c.weight) >= 0), "every title names the lightest fight it can be won on");
+    ok(A.CHALLENGES.every((c) => ["common", "rare", "epic"].indexOf(c.tier) >= 0), "and a rarity tier");
+    const steps = h.exec("patrolTitles()");
+    ok(steps.length >= 1 && steps.length <= 2 && steps.indexOf("first_blood") >= 0,
+       "the first-steps set is small and holds Debutant", steps.join(","));
+    ok(h.exec("weightOf('champion')") === "boss" && h.exec("tierOf('champion')") === "epic", "the tower title is boss-weight and epic");
+    /* the challenge-run mode says which fights count for which objective -
+       its meet rule and the title weight must agree */
+    const disagree = A.CHALLENGES.filter((c) => c.test).filter((c) => {
+      const meet = A.challengeRunMeta(c.id).meet || "bout";
+      if (meet === "any") return c.weight !== "patrol";
+      if (meet === "bout") return c.weight === "patrol";
+      if (meet === "boss") return c.weight !== "boss";
+      return false;
+    }).map((c) => c.id);
+    ok(disagree.length === 0, "the challenge-run meet rules agree with the title weights", disagree.join(",") || "agree");
+    /* evaluateChallenges itself */
+    const S = { titles: [] };
+    const st = Object.assign(A.newDuelStats(), { win: true, turns: 1, dmgTaken: 0, koClass: "STRIKE", koRange: "LONG" });
+    const patrol = A.evaluateChallenges(S, st, { encounter: "patrol" });
+    ok(patrol.length === 1 && patrol[0] === "first_blood", "a patrol hands out Debutant and nothing else", patrol.join(","));
+    ok(S.titles.length === 1, "and the others are not consumed", S.titles.join(","));
+    const next = A.evaluateChallenges(S, st, { encounter: "rival" });
+    ok(next.indexOf("untouched") >= 0 && next.indexOf("first_blood") < 0,
+       "so the next real bout still earns them", next.join(","));
+    ok(A.evaluateChallenges({ titles: [] }, st).length > 1, "a caller that says nothing is a full bout");
+    ok(A.evaluateChallenges({ titles: [] }, st, { encounter: "junk" }).length > 1, "and so is a weight nobody knows");
+    ok(A.evaluateChallenges({ titles: [] }, Object.assign({}, st, { boss: true }), { encounter: "rival" }).indexOf("champion") < 0,
+       "a boss-weight title is not awarded by a rival fight");
+    ok(A.evaluateChallenges({ titles: [] }, Object.assign({}, st, { boss: true }), { encounter: "boss" }).indexOf("champion") >= 0,
+       "only by the boss");
+    ok(A.challengeSweep({ titles: [], fr: {}, mastery: {} }, { encounter: "patrol" }).length === 0,
+       "the save-wide sweep waits for a real bout");
+    /* the ladder titles stay on the ladder - an epic is not adventure loot */
+    const gap = Object.assign(A.newDuelStats(), { win: true, myRankIndex: 0, opponentRankIndex: 3 });
+    ok(!A.CHALLENGE_BY_ID.giant_killer.test(gap), "Giant Killer needs the ladder, not just the gap");
+    gap.ranked = true;
+    ok(A.CHALLENGE_BY_ID.giant_killer.test(gap), "and is earned on it");
+    ok(!A.CHALLENGE_BY_ID.mutator_master, "the weekly mutator has no title of its own");
+  }
 };

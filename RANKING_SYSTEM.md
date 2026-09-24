@@ -81,9 +81,45 @@ Not every fight is worth the same:
 | `adventure` | 0.5 |
 | `exhibition`, `hotseat` | 0 |
 
-Only **Ranked Match** is wired to the ladder today. The others are configured and ready.
+**Ranked Match** is the full-weight grind. **Adventure** and **Survival** also
+feed the ladder at reduced weight, so career play climbs the same grades.
+Exhibition and hot-seat never move the ladder.
+
+Adventure fights skip AZX Force patrols (no ladder). Named rivals and the
+Heavens Gate champion do feed it. The camp benefit **Ladder Favor** multiplies
+adventure promotion points by 1.25 for that run only.
 
 ---
+
+## Belt tests (division gates)
+
+Crossing into a new division requires a belt test:
+
+Bronze → Silver → Gold → Sapphire → Obsidian → Heavens
+
+(Copper is the student start and is not gated.)
+
+When promotion points would cross a gate that is not yet cleared:
+
+1. Points are held just below the gate threshold.
+2. `SAVE.ranking.beltTests.pending` records the exam.
+3. Ranked Match (or the adventure champion) is the exam: win to clear the gate
+   and receive a small point bonus into the new division. Failure does not
+   demote; the pending test stays.
+
+Cleared gates live in `SAVE.ranking.beltTests.cleared`.
+
+---
+
+## Session memory
+
+A ranked climb writes `SAVE.ranking.session` after each bout so a reload can
+resume the same hero and record. Ending the session clears it. Local
+leaderboards hide ephemeral `cpu:*` rows; only real player ids appear.
+
+Player rankings also track `bestStreak` (peak win streak) beside the live
+`streak`.
+
 
 ## What the climb actually costs
 
@@ -110,8 +146,9 @@ node tests/simulate-ladder.js 200   # watch two fighters converge
 ```
 src/progress/ranking/
   rank-table.js       the 21 grades, divisions, colours, thresholds
-  ranking-service.js  point exchange, applyMatchResult, rank lookups — pure except one writer
-  ranking-store.js    persistence adapter + request layer + UI helpers
+  ranking-service.js  point exchange, applyMatchResult, rank lookups - pure except one writer
+  belt-tests.js       division gates, hold/complete, beltTests status
+  ranking-store.js    persistence adapter + request layer + UI helpers + session
 ```
 
 The service never touches storage. It takes a store with three methods:

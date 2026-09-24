@@ -16,8 +16,8 @@ const RESONANCE_PAIRS = [
     check: (counts) => (counts.boxing || 0) >= 3 && (counts.judo || 0) >= 3,
   },
   {
-    id: "OCTAGON_PREDATOR",
-    name: "Octagon Predator",
+    id: "APEX_PREDATOR",
+    name: "Apex Predator",
     discs: ["muaythai", "bjj"],
     desc: "Takedowns deal 12 blunt impact damage upon establishing ground control",
     color: "#10b981",

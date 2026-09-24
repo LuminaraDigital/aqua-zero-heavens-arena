@@ -9,34 +9,78 @@ const FloatingFeedback = {
         let lifetime = 60; // frames
         let velocityY = -1.5;
 
-        switch (type) {
-            case 'UPSET':
-                color = '#ffaa00';
-                size = 28;
-                lifetime = 90;
-                velocityY = -2;
-                break;
-            case 'TELL READ':
-                color = '#00ffff';
-                size = 24;
-                lifetime = 75;
-                break;
-            case 'STAMINA DRAIN':
-                color = '#aaaaaa';
-                size = 20;
-                velocityY = -1;
-                break;
-            case 'RING ESCAPE':
-                color = '#00ffaa';
-                size = 24;
-                lifetime = 80;
-                break;
-            case 'CRITICAL COUNTER':
-                color = '#ff0000';
-                size = 32;
-                lifetime = 100;
-                velocityY = -2.5;
-                break;
+        if (typeof type === 'object' && type !== null) {
+            if (type.color) color = type.color;
+            if (type.size) size = type.size;
+            if (type.lifetime || type.life) lifetime = type.lifetime || type.life;
+            if (type.vy || type.velocityY) velocityY = type.vy || type.velocityY;
+        } else {
+            switch (type) {
+                case 'UPSET':
+                    color = '#ffaa00';
+                    size = 28;
+                    lifetime = 90;
+                    velocityY = -2;
+                    break;
+                case 'TELL READ':
+                    color = '#00ffff';
+                    size = 24;
+                    lifetime = 75;
+                    break;
+                case 'STAMINA DRAIN':
+                    color = '#aaaaaa';
+                    size = 20;
+                    velocityY = -1;
+                    break;
+                case 'RING ESCAPE':
+                    color = '#00ffaa';
+                    size = 24;
+                    lifetime = 80;
+                    break;
+                case 'CRITICAL COUNTER':
+                case 'CRITICAL':
+                    color = '#ff3333';
+                    size = 32;
+                    lifetime = 100;
+                    velocityY = -2.5;
+                    break;
+                case 'PARRY':
+                    color = '#22d3ee';
+                    size = 26;
+                    lifetime = 75;
+                    velocityY = -2;
+                    break;
+                case 'GUARD BREAK':
+                    color = '#f59e0b';
+                    size = 28;
+                    lifetime = 85;
+                    velocityY = -2.2;
+                    break;
+                case 'STAMINA BREAK':
+                    color = '#ef4444';
+                    size = 30;
+                    lifetime = 95;
+                    velocityY = -2;
+                    break;
+                case 'GLANCING':
+                    color = '#9ca3af';
+                    size = 18;
+                    lifetime = 50;
+                    velocityY = -1.2;
+                    break;
+                case 'COMBO':
+                    color = '#fbbf24';
+                    size = 26;
+                    lifetime = 70;
+                    velocityY = -1.8;
+                    break;
+                case 'SUPER':
+                    color = '#ec4899';
+                    size = 34;
+                    lifetime = 110;
+                    velocityY = -2.8;
+                    break;
+            }
         }
 
         this.texts.push({
@@ -48,8 +92,13 @@ const FloatingFeedback = {
             maxLife: lifetime,
             life: lifetime,
             vy: velocityY,
+            scale: 1.35,
             alpha: 1.0
         });
+    },
+
+    spawn: function(message, x, y, opts) {
+        this.add(message, x, y, opts);
     },
 
     update: function() {
@@ -58,6 +107,12 @@ const FloatingFeedback = {
             t.y += t.vy;
             t.life--;
             
+            // Pop-in scale easing to 1.0
+            if (t.scale > 1.0) {
+                t.scale -= 0.05;
+                if (t.scale < 1.0) t.scale = 1.0;
+            }
+
             // Fade out in the last half of life
             if (t.life < t.maxLife / 2) {
                 t.alpha = t.life / (t.maxLife / 2);
@@ -77,23 +132,37 @@ const FloatingFeedback = {
         for (let i = 0; i < this.texts.length; i++) {
             let t = this.texts[i];
             
-            // Text shadow for readability
-            ctx.font = `bold ${t.size}px Arial, sans-serif`;
-            ctx.fillStyle = `rgba(0, 0, 0, ${t.alpha})`;
-            ctx.fillText(t.message, t.x + 2, t.y + 2);
+            ctx.save();
+            ctx.translate(t.x, t.y);
+            if (t.scale && t.scale !== 1.0) {
+                ctx.scale(t.scale, t.scale);
+            }
 
-            // Main text
+            // Glow / Shadow for crisp esports readability
+            ctx.font = `bold ${t.size}px "Bahnschrift", "Segoe UI Variable", Arial, sans-serif`;
+            ctx.shadowColor = `rgba(0, 0, 0, ${Math.min(1.0, t.alpha * 0.9)})`;
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetY = 2;
+            ctx.fillStyle = `rgba(0, 0, 0, ${t.alpha})`;
+            ctx.fillText(t.message, 0, 0);
+
+            // Main high-contrast text
             ctx.fillStyle = this._hexToRgba(t.color, t.alpha);
-            ctx.fillText(t.message, t.x, t.y);
+            ctx.fillText(t.message, 0, 0);
+            ctx.restore();
         }
         
         ctx.restore();
     },
 
     _hexToRgba: function(hex, alpha) {
-        let r = parseInt(hex.slice(1, 3), 16),
-            g = parseInt(hex.slice(3, 5), 16),
-            b = parseInt(hex.slice(5, 7), 16);
+        let cleanHex = hex.replace('#', '');
+        if (cleanHex.length === 3) {
+            cleanHex = cleanHex.split('').map(c => c + c).join('');
+        }
+        let r = parseInt(cleanHex.slice(0, 2), 16) || 255,
+            g = parseInt(cleanHex.slice(2, 4), 16) || 255,
+            b = parseInt(cleanHex.slice(4, 6), 16) || 255;
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 };

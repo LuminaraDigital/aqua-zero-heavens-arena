@@ -213,8 +213,10 @@ var P2PNetwork = (function() {
 
 if (typeof window !== "undefined") {
     window.P2PNetwork = P2PNetwork;
+    window.P2PMultiplayer = P2PNetwork;
 }
 
 if (typeof module !== "undefined" && module.exports) {
     module.exports = P2PNetwork;
 }
+

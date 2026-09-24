@@ -126,7 +126,16 @@ module.exports = function (h) {
     const onMat = A.damageOf(d, atk, def, A.TECH.armbar);
     d.range = "LONG";
     const standing = A.damageOf(d, atk, def, A.TECH.armbar);
-    ok(onMat > standing * 2, "the same submission is far better on the mat", onMat + " vs " + standing);
+    /* Exactly twice, not more: the fit layer is budgeted 0.50-1.30
+       (DMG_CLAMP.fit), so the whole spread between the right range and
+       the wrong one is 2.6x at the very most, and an armbar at kicking
+       range sits on the 0.50 floor while the same armbar on the mat sits
+       at 1.00. Before the collapse the raw product was 0.172 and an
+       out-of-range technique was simply deleted; the point of the budget
+       is that no single layer can do that on its own. */
+    ok(onMat >= standing * 2, "the same submission is far better on the mat", onMat + " vs " + standing);
+    ok(onMat <= standing * (A.DMG_CLAMP.fit[1] / A.DMG_CLAMP.fit[0]),
+       "and no more than the fit budget allows", onMat + " vs " + standing);
     d.range = "GROUND";
     const accClean = A.accuracyOf(d, atk, def, A.TECH.armbar);
     A.addStatus(def, "PINNED");

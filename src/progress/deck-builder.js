@@ -197,6 +197,120 @@ const DeckBuilder = (function () {
     return Object.assign({}, customDecks);
   }
 
+  function deleteCustomDeck(heroId) {
+    load();
+    if (customDecks[heroId]) {
+      delete customDecks[heroId];
+      save();
+      return true;
+    }
+    return false;
+  }
+
+  function getDeckStats(techniqueIds) {
+    var cards = Array.isArray(techniqueIds) ? techniqueIds : [];
+    var totalCost = calculateDeckCost(cards);
+    var validation = validateDeck(cards);
+    
+    var ranges = { LONG: 0, MID: 0, CLINCH: 0, GROUND: 0, ANY: 0 };
+    var staminaCurve = { low: 0, mid: 0, high: 0 };
+    var totalPower = 0;
+    var totalStam = 0;
+    var count = cards.length;
+
+    for (var i = 0; i < count; i++) {
+      var tid = cards[i];
+      var t = (typeof TECH !== "undefined" && TECH[tid]) ? TECH[tid] : { power: 20, stam: 6, range: "MID" };
+      var r = t.range || "MID";
+      if (ranges[r] !== undefined) ranges[r]++;
+      else ranges.MID++;
+
+      var s = t.stam !== undefined ? t.stam : 6;
+      if (s <= 5) staminaCurve.low++;
+      else if (s <= 9) staminaCurve.mid++;
+      else staminaCurve.high++;
+
+      totalPower += (t.power || 0);
+      totalStam += s;
+    }
+
+    return {
+      cost: totalCost,
+      budget: MAX_BUDGET,
+      remainingBudget: MAX_BUDGET - totalCost,
+      count: count,
+      minCards: MIN_CARDS,
+      maxCards: MAX_CARDS,
+      ranges: ranges,
+      staminaCurve: staminaCurve,
+      avgPower: count > 0 ? parseFloat((totalPower / count).toFixed(1)) : 0,
+      avgStamina: count > 0 ? parseFloat((totalStam / count).toFixed(1)) : 0,
+      validation: validation,
+      isLegal: validation.ok,
+    };
+  }
+
+  function getVaultCards(opts) {
+    opts = opts || {};
+    var discFilter = opts.discipline ? String(opts.discipline).toLowerCase() : "all";
+    var search = opts.search ? String(opts.search).toLowerCase().trim() : "";
+    var results = [];
+
+    var techSource = (typeof TECH !== "undefined") ? TECH : ((typeof global !== "undefined" && global.TECH) ? global.TECH : null);
+    if (!techSource) {
+      techSource = {
+        jab: { id: "jab", name: "Lead Jab", disc: "boxing", cls: "STRIKE", power: 12, stam: 4, speed: 90, range: "MID", flags: ["fast"] },
+        cross: { id: "cross", name: "Straight Right", disc: "boxing", cls: "STRIKE", power: 18, stam: 6, speed: 75, range: "MID" },
+        lead_hook: { id: "lead_hook", name: "Lead Hook", disc: "boxing", cls: "STRIKE", power: 22, stam: 8, speed: 70, range: "MID" },
+        high_guard: { id: "high_guard", name: "High Guard", disc: "boxing", cls: "GUARD", power: 0, stam: 0, speed: 60, range: "ANY" },
+        low_kick: { id: "low_kick", name: "Low Kick", disc: "muaythai", cls: "STRIKE", power: 18, stam: 6, speed: 72, range: "LONG", flags: ["low"] }
+      };
+    }
+
+    for (var id in techSource) {
+      var t = techSource[id];
+      if (!t) continue;
+      if (discFilter !== "all" && String(t.disc || "").toLowerCase() !== discFilter) {
+        continue;
+      }
+      if (search) {
+        var nameMatch = String(t.name || "").toLowerCase().indexOf(search) >= 0;
+        var idMatch = String(t.id || "").toLowerCase().indexOf(search) >= 0;
+        var discMatch = String(t.disc || "").toLowerCase().indexOf(search) >= 0;
+        var clsMatch = String(t.cls || "").toLowerCase().indexOf(search) >= 0;
+        if (!nameMatch && !idMatch && !discMatch && !clsMatch) continue;
+      }
+      results.push(Object.assign({}, t, { pointCost: costOf(t.id) }));
+    }
+
+    return results;
+  }
+
+  function getDefaultDeck(heroId) {
+    if (typeof FIGHTERS === "undefined" || !FIGHTERS[heroId]) {
+      return [
+        "jab", "cross", "lead_hook", "rear_hook", "lead_upper", "rear_upper",
+        "overhand", "liver_shot", "check_hook", "shoulder_roll", "switch_kick", "low_kick"
+      ];
+    }
+    if (typeof knownTechs === "function") {
+      var kt = knownTechs(heroId, 9);
+      if (Array.isArray(kt) && kt.length >= MIN_CARDS) {
+        return kt.map(function(t) { return (t && typeof t === "object") ? (t.id || t.name) : String(t); }).slice(0, MAX_CARDS);
+      }
+    }
+    if (typeof battlePool === "function") {
+      var pool2 = battlePool(heroId, 9);
+      if (Array.isArray(pool2) && pool2.length >= MIN_CARDS) {
+        return pool2.map(function(t) { return (t && typeof t === "object") ? (t.id || t.name) : String(t); }).slice(0, MAX_CARDS);
+      }
+    }
+    return [
+      "jab", "cross", "lead_hook", "rear_hook", "lead_upper", "rear_upper",
+      "overhand", "liver_shot", "check_hook", "shoulder_roll", "switch_kick", "low_kick"
+    ];
+  }
+
   function load() {
     try {
       if (typeof localStorage !== "undefined") {
@@ -232,6 +346,10 @@ const DeckBuilder = (function () {
     saveCustomDeck: saveCustomDeck,
     getCustomDeck: getCustomDeck,
     getAllCustomDecks: getAllCustomDecks,
+    deleteCustomDeck: deleteCustomDeck,
+    getDeckStats: getDeckStats,
+    getVaultCards: getVaultCards,
+    getDefaultDeck: getDefaultDeck,
     load: load,
     save: save,
   };
@@ -244,3 +362,4 @@ if (typeof window !== "undefined") {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = DeckBuilder;
 }
+

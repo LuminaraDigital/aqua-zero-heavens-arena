@@ -157,6 +157,17 @@ const GhostBattles = {
   createGhostCombatant,
 };
 
+GhostBattles.importPasscode = function (code) {
+  const decoded = decodeGhostBuild(code);
+  return decoded ? createGhostCombatant(decoded) : null;
+};
+
+if (typeof window !== "undefined") {
+  window.GhostBattles = GhostBattles;
+  window.GhostCombat = GhostBattles;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = GhostBattles;
 }
+

@@ -9,10 +9,30 @@ var CardTooltip = (function() {
     var activeTooltip = null;
     var hoverTimer = 0;
     var TYPE_LABELS = {
-        0: { name: "STRIKE", icon: "[S]", beats: "Beats Throw", color: "#e6392f", badge: "STR" },
-        1: { name: "THROW", icon: "[T]", beats: "Breaks Guard", color: "#f59e0b", badge: "THR" },
-        2: { name: "GUARD", icon: "[G]", beats: "Stops Strike", color: "#22d3ee", badge: "GRD" },
-        3: { name: "FOCUS", icon: "[F]", beats: "Tactical Tech", color: "#10b981", badge: "FOC" }
+        0: { name: "STRIKE", icon: "[S]", glyph: "\uD83E\uDD4A", beats: "Beats Throw", color: "#e6392f", badge: "STR" },
+        1: { name: "THROW", icon: "[T]", glyph: "\uD83E\uDD4B", beats: "Breaks Guard", color: "#f59e0b", badge: "THR" },
+        2: { name: "GUARD", icon: "[G]", glyph: "\uD83D\uDEE1\uFE0F", beats: "Stops Strike", color: "#22d3ee", badge: "GRD" },
+        3: { name: "FOCUS", icon: "[F]", glyph: "\uD83E\uDDB6", beats: "Tactical Tech", color: "#10b981", badge: "FOC" },
+        4: { name: "SUB", icon: "[U]", glyph: "\uD83D\uDD12", beats: "Ground Lock", color: "#a855f7", badge: "SUB" }
+    };
+
+    var DISC_COLORS = {
+        boxing: "#38bdf8",
+        kickboxing: "#06b6d4",
+        muaythai: "#ef4444",
+        lethwei: "#dc2626",
+        taekwondo: "#38bdf8",
+        shotokan: "#f97316",
+        kyokushin: "#ea580c",
+        judo: "#d97706",
+        wrestling: "#eab308",
+        sambo: "#ec4899",
+        bjj: "#a855f7",
+        catchwrestling: "#8b5cf6",
+        wingchun: "#10b981",
+        capoeira: "#14b8a6",
+        pankration: "#f43f5e",
+        savate: "#0ea5e9"
     };
 
     function getTypeInfo(type) {
@@ -20,6 +40,7 @@ var CardTooltip = (function() {
             var upper = type.toUpperCase();
             if (upper.indexOf("STR") >= 0) return TYPE_LABELS[0];
             if (upper.indexOf("THR") >= 0) return TYPE_LABELS[1];
+            if (upper.indexOf("SUB") >= 0) return TYPE_LABELS[4];
             if (upper.indexOf("GRD") >= 0 || upper.indexOf("BLK") >= 0) return TYPE_LABELS[2];
             return TYPE_LABELS[3];
         }
@@ -28,12 +49,14 @@ var CardTooltip = (function() {
 
     function formatCardDetails(card, fighter) {
         if (!card) return null;
-        var typeInfo = getTypeInfo(card.type !== undefined ? card.type : 0);
+        var typeInfo = getTypeInfo(card.cls !== undefined ? card.cls : (card.type !== undefined ? card.type : 0));
         var pow = card.pow !== undefined ? card.pow : (card.power || 0);
         var name = card.name || card.reading || ("Technique #" + (card.slot !== undefined ? card.slot : 1));
         var speedTier = pow >= 25 ? "Slow (Heavy)" : (pow <= 12 ? "Fast (Light)" : "Medium (Standard)");
         var focusCost = card.focusCost || (pow > 20 ? 1 : 0);
         var synergy = card.synergy || "";
+        var disc = card.disc || card.discipline || "";
+        var range = card.range || "MID";
 
         if (fighter && fighter.archetype && !synergy) {
             var arch = fighter.archetype.toLowerCase();
@@ -46,8 +69,12 @@ var CardTooltip = (function() {
             name: name,
             type: typeInfo.name,
             badge: typeInfo.badge,
+            glyph: typeInfo.glyph,
             beats: typeInfo.beats,
             color: typeInfo.color,
+            disc: disc,
+            discColor: DISC_COLORS[disc.toLowerCase()] || "#94a3b8",
+            range: range,
             power: pow,
             speedTier: speedTier,
             focusCost: focusCost,
@@ -80,7 +107,7 @@ var CardTooltip = (function() {
         if (!activeTooltip || !activeTooltip.data || !ctx) return;
         var d = activeTooltip.data;
         var w = customW || 240;
-        var h = customH || 130;
+        var h = customH || 134;
         var x = activeTooltip.x;
         var y = activeTooltip.y - h - 12;
 
@@ -106,22 +133,31 @@ var CardTooltip = (function() {
 
         // Header Type Badge
         ctx.fillStyle = d.color;
-        ctx.fillRect(x + 10, y + 10, 42, 18);
+        ctx.fillRect(x + 10, y + 10, 44, 18);
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 10px Bahnschrift, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(d.badge, x + 31, y + 23);
+        ctx.fillText(d.badge, x + 32, y + 23);
 
         // Move Name
         ctx.fillStyle = "#f3f4f6";
         ctx.font = "bold 13px Bahnschrift, sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText(d.name.toUpperCase(), x + 58, y + 23);
+        ctx.fillText(d.name.toUpperCase(), x + 60, y + 23);
+
+        // Discipline Tag (if present)
+        if (d.disc) {
+            ctx.fillStyle = d.discColor;
+            ctx.font = "bold 9px Bahnschrift, sans-serif";
+            ctx.textAlign = "right";
+            ctx.fillText(d.disc.toUpperCase(), x + w - 10, y + 23);
+            ctx.textAlign = "left";
+        }
 
         // Rule hint (e.g., Beats Throw)
         ctx.fillStyle = d.color;
         ctx.font = "italic 10px Bahnschrift, sans-serif";
-        ctx.fillText(d.beats.toUpperCase(), x + 12, y + 46);
+        ctx.fillText(d.beats.toUpperCase() + (d.range ? "  \u2022  " + d.range : ""), x + 12, y + 46);
 
         // Power & Speed metrics
         ctx.fillStyle = "#9ca3af";

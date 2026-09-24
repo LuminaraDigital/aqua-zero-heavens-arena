@@ -1,0 +1,25 @@
+{
+  "console_errors": [],
+  "turns": [
+    {
+      "turn": 0,
+      "commit_to_cmd_ms": 55150,
+      "phases": [
+        [
+          "CHAIN",
+          42
+        ]
+      ]
+    }
+  ],
+  "states": {
+    "end": {
+      "scene": 6,
+      "duel": true,
+      "ph": 5,
+      "hp_p": 92,
+      "hp_e": 0,
+      "turn": 1
+    }
+  }
+}

@@ -64,6 +64,10 @@ function generateBountiesForFight(seed) {
 function evaluateBountyResult(bounty, duelStats, styleState) {
   if (!bounty || !duelStats) return { ok: false, payout: 0, renown: 0 };
   const passed = !!bounty.check(duelStats, styleState);
+  const tokenReward = passed ? (bounty.eventTokens || 1) : 0;
+  if (passed && tokenReward > 0 && typeof CreditLedger !== "undefined" && typeof CreditLedger.depositEventTokens === "function") {
+    CreditLedger.depositEventTokens(tokenReward, "Bounty Reward", { bountyId: bounty.id });
+  }
   return {
     ok: passed,
     bountyId: bounty.id,
@@ -71,6 +75,7 @@ function evaluateBountyResult(bounty, duelStats, styleState) {
     purseMul: passed ? bounty.purseMul : 1.0,
     renown: passed ? bounty.renownReward : 0,
     seal: passed ? bounty.sealReward : null,
+    eventTokens: tokenReward,
   };
 }
 

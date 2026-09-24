@@ -675,8 +675,8 @@ function venuePaintHaze(cx, W, H, g, venue, t) {
     const y = g.farY + (g.nearY - g.farY) * p.fy;
     const r = W * p.r;
     const hg = cx.createRadialGradient(x, y, 0, x, y, r);
-    const rim = venue.rim || "rgba(255,255,255,.1)";
-    hg.addColorStop(0, rim.replace(/[\d.]+\)$/, "0.05)"));
+    const rim = (venue.rim || "rgba(255,255,255,$A)").replace("$A", "0.05");
+    hg.addColorStop(0, rim);
     hg.addColorStop(1, "rgba(0,0,0,0)");
     cx.globalAlpha = 0.5;
     cx.fillStyle = hg;
@@ -713,32 +713,26 @@ function venuePaintVoid(cx, W, H, venue) {
   /* outdoor gets a cooler sky band across the top third */
   if (venue.id === "outdoor") {
     const sky = cx.createLinearGradient(0, 0, 0, H * 0.38);
-    sky.addColorStop(0, "rgba(70,110,160,.22)");
-    sky.addColorStop(1, "rgba(70,110,160,0)");
+    sky.addColorStop(0, "rgba(40,70,100,.14)");
+    sky.addColorStop(1, "rgba(0,0,0,0)");
     cx.fillStyle = sky;
     cx.fillRect(0, 0, W, H * 0.38);
   }
 }
 
-function venuePaintCrowd(cx, W, H, venue, crowdA) {
-  const a = venueClamp01(crowdA);
-  if (a <= 0.001) return;
-  const band = Math.min(190, H * 0.36);
-  const base = venue.crowd || "rgba(255,236,190,1)";
-  /* strip the trailing alpha from "rgba(r,g,b,1)" if present, rebuild */
-  const rgb = base.replace(/\s*,\s*[\d.]+\s*\)\s*$/, ")");
-  const col = rgb.indexOf("rgba") === 0
-    ? rgb.replace(/\)$/, "," + a.toFixed(3) + ")")
-    : base;
+function venuePaintCrowd(cx, W, H, venue, alpha) {
+  const a = venueClamp01(alpha == null ? 0.12 : alpha);
+  if (a <= 0.01) return;
+  const band = H * 0.38;
   const cg = cx.createLinearGradient(0, 0, 0, band);
-  cg.addColorStop(0, col);
+  cg.addColorStop(0, venue.crowd);
   cg.addColorStop(1, "rgba(0,0,0,0)");
   cx.fillStyle = cg;
   cx.fillRect(0, 0, W, band);
   /* subtle vertical stands suggestion - low alpha rects */
   cx.save();
   cx.globalAlpha = Math.min(0.22, a * 0.55);
-  cx.fillStyle = venue.rim || "rgba(255,255,255,.12)";
+  cx.fillStyle = (venue.rim || "rgba(255,255,255,$A)").replace("$A", "0.12");
   const n = 18;
   const gap = W / n;
   for (let i = 0; i < n; i++) {
@@ -763,7 +757,7 @@ function venuePaintMat(cx, g, venue) {
   /* centre circle suggestion - very light */
   cx.save();
   cx.globalAlpha = 0.14;
-  cx.strokeStyle = venue.rim || "#fff";
+  cx.strokeStyle = (venue.rim || "rgba(255,255,255,$A)").replace("$A", "0.35");
   cx.lineWidth = 1.5;
   const midY = (g.farY + g.nearY) * 0.55;
   const rx = (g.nearR - g.nearL) * 0.12;
@@ -891,6 +885,68 @@ function venuePaintReflection(cx, W, H, yBase, alpha) {
   cx.restore();
 }
 
+function venuePaintFlares(cx, W, H, venue, t) {
+  const tt = venueNum(t, 0);
+  const v = venueOf(venue);
+  const rimCol = (v.rim || "rgba(120,180,220,$A)").replace("$A", "0.45");
+  const flarePoints = [
+    { x: W * 0.18, y: H * 0.06 },
+    { x: W * 0.50, y: H * 0.05 },
+    { x: W * 0.82, y: H * 0.06 }
+  ];
+  cx.save();
+  cx.globalCompositeOperation = "screen";
+  for (let i = 0; i < flarePoints.length; i++) {
+    const fp = flarePoints[i];
+    const pulse = 0.7 + 0.3 * Math.sin(tt * 1.8 + i * 1.6);
+    const r = 28 * pulse;
+    const fg = cx.createRadialGradient(fp.x, fp.y, 0, fp.x, fp.y, r);
+    fg.addColorStop(0, "rgba(255,255,255,.6)");
+    fg.addColorStop(0.3, rimCol);
+    fg.addColorStop(1, "rgba(0,0,0,0)");
+    cx.fillStyle = fg;
+    cx.beginPath();
+    cx.arc(fp.x, fp.y, r, 0, Math.PI * 2);
+    cx.fill();
+
+    // Horizontal anamorphic flare streak
+    const streakW = 75 * pulse;
+    const sg = cx.createLinearGradient(fp.x - streakW, fp.y, fp.x + streakW, fp.y);
+    sg.addColorStop(0, "rgba(255,255,255,0)");
+    sg.addColorStop(0.5, "rgba(255,255,255," + (0.35 * pulse).toFixed(3) + ")");
+    sg.addColorStop(1, "rgba(255,255,255,0)");
+    cx.fillStyle = sg;
+    cx.fillRect(fp.x - streakW, fp.y - 1.5, streakW * 2, 3);
+  }
+  cx.restore();
+}
+
+function venuePaintAtmosphericMotes(cx, W, H, venue, t) {
+  const tt = venueNum(t, 0);
+  const v = venueOf(venue);
+  const isHeavens = v.id === "heavens";
+  const moteCount = isHeavens ? 28 : 20;
+  cx.save();
+  for (let i = 0; i < moteCount; i++) {
+    const h1 = venueHash01(i, 101);
+    const h2 = venueHash01(i, 102);
+    const h3 = venueHash01(i, 103);
+    const x = ((h1 * W + Math.sin(tt * 0.4 + h2 * 6.28) * 35) % W + W) % W;
+    const ySpeed = isHeavens ? -26 : -14;
+    const y = ((h2 * H + tt * ySpeed * (0.6 + h3 * 0.8)) % H + H) % H;
+    const sz = 1.0 + h3 * 1.6;
+    const pulse = 0.3 + 0.7 * Math.sin(tt * 1.5 + h1 * 6.28);
+    const alpha = (0.08 + 0.22 * pulse) * (isHeavens ? 0.75 : 0.5);
+
+    cx.globalAlpha = alpha;
+    cx.fillStyle = isHeavens ? (i % 2 === 0 ? "#ff7a5c" : "#ffd27a") : (v.id === "broadcast" ? "#67e8f9" : "#fff6e0");
+    cx.beginPath();
+    cx.arc(x, y, sz, 0, Math.PI * 2);
+    cx.fill();
+  }
+  cx.restore();
+}
+
 function venueArenaReady(img) {
   return !!(img && img.complete && img.naturalWidth > 0);
 }
@@ -956,9 +1012,8 @@ function paintVenue(cx, W, H, venue, opts) {
   /* rim wash along the apron for broadcast / club cool edge */
   if (v.rim) {
     cx.save();
-    cx.globalAlpha = 0.55;
     const rg = cx.createLinearGradient(0, g.farY, 0, g.nearY);
-    rg.addColorStop(0, v.rim);
+    rg.addColorStop(0, v.rim.replace("$A", "0.22"));
     rg.addColorStop(1, "rgba(0,0,0,0)");
     cx.fillStyle = rg;
     cx.fillRect(0, g.farY - 20, w, (g.nearY - g.farY) * 0.35);
@@ -967,6 +1022,8 @@ function paintVenue(cx, W, H, venue, opts) {
   venuePaintDim(cx, w, h, o.dim);
   venuePaintSpot(cx, w, h, o.spot);
   venuePaintBloom(cx, w, h, v.rim || "rgba(120,180,220,$A)", 0.18);
+  venuePaintFlares(cx, w, h, v, venueNum(o.t, 0));
+  venuePaintAtmosphericMotes(cx, w, h, v, venueNum(o.t, 0));
   venuePaintReflection(cx, w, h, g.nearY - 4, 0.10);
   venuePaintVignette(cx, w, h, o.vignette);
 }
@@ -1036,6 +1093,8 @@ function paintTitleAtmosphere(cx, W, H, venue, opts) {
   const spot = o.spot || { x: w * 0.5, r: Math.min(w, h) * 0.42, pulse: 0 };
   venuePaintSpot(cx, w, h, spot);
   venuePaintBloom(cx, w, h, "rgba(120,180,220,$A)", 0.14);
+  venuePaintFlares(cx, w, h, v, venueNum(o.t, 0));
+  venuePaintAtmosphericMotes(cx, w, h, v, venueNum(o.t, 0));
   venuePaintDim(cx, w, h, o.dim);
   venuePaintVignette(cx, w, h, o.vignette == null ? 0.4 : o.vignette);
 }

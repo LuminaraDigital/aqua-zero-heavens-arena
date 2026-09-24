@@ -147,6 +147,31 @@ const SFX = {
         osc.stop(this.ctx.currentTime + 0.15);
     },
 
+    slashWhoosh: function() {
+        if (!this.enabled || !this.ctx || this.volume <= 0) return;
+        this._playNoise(0.18, 0.45, { attack: 0.01, decay: 0.06, release: 0.11 }, 2200, 'bandpass');
+        this._playTone(420, 'triangle', 0.12, 0.35, { attack: 0.01, decay: 0.05, release: 0.06 });
+    },
+
+    slamImpact: function() {
+        if (!this.enabled || !this.ctx || this.volume <= 0) return;
+        this._playNoise(0.28, 0.65, { attack: 0.005, decay: 0.1, release: 0.18 }, 450, 'lowpass');
+        this._playTone(45, 'sine', 0.3, 0.9, { attack: 0.005, decay: 0.15, release: 0.15 });
+    },
+
+    counterShatter: function() {
+        if (!this.enabled || !this.ctx || this.volume <= 0) return;
+        this._playNoise(0.2, 0.6, { attack: 0.002, decay: 0.06, release: 0.14 }, 3200, 'highpass');
+        this._playTone(580, 'sawtooth', 0.12, 0.4, { attack: 0.002, decay: 0.04, release: 0.08 });
+        this._playTone(90, 'triangle', 0.22, 0.7, { attack: 0.005, decay: 0.08, release: 0.14 });
+    },
+
+    subJointTension: function() {
+        if (!this.enabled || !this.ctx || this.volume <= 0) return;
+        this._playTone(160, 'sine', 0.35, 0.5, { attack: 0.05, decay: 0.15, release: 0.15 });
+        this._playNoise(0.18, 0.3, { attack: 0.02, decay: 0.08, release: 0.08 }, 900, 'bandpass');
+    },
+
     matSqueak: function() {
         this._playTone(1200, 'sine', 0.1, 0.2, { attack: 0.02, decay: 0.05, release: 0.05 });
     },

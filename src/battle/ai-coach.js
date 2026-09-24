@@ -69,10 +69,29 @@ const AICoach = (function() {
 
     // Synthesize structured advice bullets
     const bullets = [];
-    const pDiscs = (p && p.discs) || [];
-    const eDiscs = (e && e.discs) || [];
-    const pFighterName = (p && FIGHTERS && FIGHTERS[p.fid]) ? FIGHTERS[p.fid].name.split(" ")[0] : "Fighter";
-    const eFighterName = (e && FIGHTERS && FIGHTERS[e.fid]) ? FIGHTERS[e.fid].name.split(" ")[0] : "Opponent";
+    /* THE SAME NAME THE HUD PRINTS, not a roster first name.
+       sideName() in page.template.html is the one source of truth for what
+       a corner is called - it already knows that an AZX Force patrol is a
+       borrowed roster card wearing a silhouette. Reading FIGHTERS[fid]
+       directly bypassed it, so the coach panel said "Defeat against Mike"
+       while the HUD above it said AZX FORCE. That is the bug workstream C
+       existed to kill; it only became reachable here once the coach was
+       wired to the results screen, after C had shipped. */
+    /* the whole HUD string, not its first word: "AZX FORCE" is the name,
+       and acceptance criterion 7 is that the HUD and everything reading
+       off it print the SAME string. Shortening to a first name here is how
+       the two drifted apart in the first place. */
+    const displayName = (side, fallback) => {
+      if (typeof sideName === "function" && d && d.p && d.e && side) {
+        try {
+          const n = String(sideName(d, side) || "").trim();
+          if (n) return n;
+        } catch (err) { /* fall through to the roster */ }
+      }
+      return (side && FIGHTERS && FIGHTERS[side.fid]) ? FIGHTERS[side.fid].name : fallback;
+    };
+    const pFighterName = displayName(p, "Fighter");
+    const eFighterName = displayName(e, "Opponent");
 
     // Bullet 1: Range & Matchup Key
     if (tracker && tracker.rangeOccupancy) {

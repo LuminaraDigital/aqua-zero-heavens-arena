@@ -24,6 +24,7 @@ const KEY_TEST_FILES = [
   "tests/run-tests.js",
   "tests/harness.js",
   "tests/ranking.test.js",
+  "tests/belt-career.test.js",
   "tests/battle.test.js",
   "tests/combat.test.js",
   "tests/game.test.js",
@@ -69,9 +70,10 @@ if (!fs.existsSync(RUNNER)) {
   }
 }
 
-const result = spawnSync(process.execPath, [RUNNER], {
+const result = spawnSync(process.execPath, [RUNNER, "--quiet"], {
   cwd: ROOT,
   encoding: "utf8",
+  maxBuffer: 20 * 1024 * 1024,
   env: process.env,
 });
 

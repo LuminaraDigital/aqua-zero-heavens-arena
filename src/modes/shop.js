@@ -52,6 +52,7 @@ const PURSE = {
   ranked: 6,          // ladder fights carry a small side purse
   survival: 4,
   revenge: 16,        // settling a grudge with the man who beat you this run
+  winStreak: 15,      // 3+ win streak contract performance bonus
   stageStep: 0.35,    // each stage up is a bigger gate
   stageMax: 6,        // beyond which the money stops running away
 };
@@ -67,33 +68,93 @@ const purseScale = (stage) => 1 + PURSE.stageStep * (stageIndex(stage) - 1);
    result is the duelStats block a finished fight leaves behind, plus the
    stage it happened on:
      { win, perfect, turns, hpLeft, koClass, boss, ranked, matchType,
-       stage, level, oppLevel }
+       stage, level, oppLevel, streak }
    Bonuses are deliberately additive rather than multiplied together - a
    perfect fast submission upset should pay very well, not absurdly. */
 function purseFor(result) {
   const r = result || {};
-  let pay = r.win ? PURSE.win : PURSE.show;
+  let show = PURSE.show;
+  let winBonus = r.win ? PURSE.win : 0;
+  let finish = 0;
+  let speed = 0;
+  let upset = 0;
+  let boss = 0;
+  let revenge = 0;
+  let streak = 0;
 
   if (r.win) {
-    // "perfect" as the fight code means it: nothing landed on you
-    if (r.perfect || r.dmgTaken === 0) pay += PURSE.perfect;
-    if (r.koClass === "SUB") pay += PURSE.submission;
-    else if (r.koClass === "STRIKE") pay += PURSE.ko;
-    // speed pays on a slope, not a cliff, so turn nine does not feel robbed
+    if (r.streak >= 3 || r.winStreak) streak = PURSE.winStreak;
+    if (r.perfect || r.dmgTaken === 0) finish += PURSE.perfect;
+    if (r.koClass === "SUB") finish += PURSE.submission;
+    else if (r.koClass === "STRIKE") finish += PURSE.ko;
     if (r.turns && r.turns <= PURSE.fastTurns) {
-      pay += Math.round(PURSE.speed * ((PURSE.fastTurns - r.turns + 1) / PURSE.fastTurns));
+      speed = Math.round(PURSE.speed * ((PURSE.fastTurns - r.turns + 1) / PURSE.fastTurns));
     }
-    // beating someone above your grade is the best-paid thing you can do
     const gap = Math.max(0, Math.min(PURSE.upsetCap, (r.oppLevel || 0) - (r.level || 0)));
-    if (gap > 0) pay += PURSE.upset * gap;
-    if (r.boss) pay += PURSE.boss;
-    if (r.revenge) pay += PURSE.revenge;   // the nemesis, put away
+    if (gap > 0) upset = PURSE.upset * gap;
+    if (r.boss) boss = PURSE.boss;
+    if (r.revenge) revenge = PURSE.revenge;
   }
-  if (r.matchType === "ranked" || r.ranked) pay += PURSE.ranked;
-  if (r.matchType === "survival") pay += PURSE.survival;
+  let modeBonus = 0;
+  if (r.matchType === "ranked" || r.ranked) modeBonus += PURSE.ranked;
+  if (r.matchType === "survival") modeBonus += PURSE.survival;
 
-  return Math.max(1, Math.round(pay * purseScale(r.stage)));
+  const scale = purseScale(r.stage);
+  const gross = Math.max(1, Math.round((show + winBonus + finish + speed + upset + boss + revenge + streak + modeBonus) * scale));
+
+  // If detailed breakdown requested (or via AIPromoter), return full breakdown object
+  if (r.detailed) {
+    const campFee = Math.round(gross * 0.10);
+    const cornerFee = Math.round(gross * 0.10);
+    const net = Math.max(1, gross - (campFee + cornerFee));
+    return {
+      gross: gross,
+      show: Math.round(show * scale),
+      win: Math.round(winBonus * scale),
+      finish: Math.round(finish * scale),
+      speed: Math.round(speed * scale),
+      upset: Math.round(upset * scale),
+      boss: Math.round(boss * scale),
+      revenge: Math.round(revenge * scale),
+      campFee: campFee,
+      cornerFee: cornerFee,
+      net: net,
+    };
+  }
+
+  return gross;
 }
+
+/* ---------------------------------------------------------------------
+   FIGHT WEEK & EVENT TOKEN STORE (Fight Week Token Pattern)
+   --------------------------------------------------------------------- */
+const EVENT_TOKEN_STORE = [
+  {
+    id: "SKIN_GOLDEN_GIS",
+    name: "Golden Master Gi",
+    desc: "Cosmetic championship attire for the arena",
+    costTokens: 5,
+    costGlory: 100,
+    category: "COSMETIC"
+  },
+  {
+    id: "WALKOUT_HEAVENS_HORN",
+    name: "Heavens Horn Stinger",
+    desc: "Custom brass orchestral walkout stinger",
+    costTokens: 3,
+    costGlory: 60,
+    category: "AUDIO"
+  },
+  {
+    id: "EDGE_SMUGGLER_PASS",
+    name: "Contraband Pass",
+    desc: "Guarantees an EDGE benefit appears in next Gym",
+    costTokens: 4,
+    costGlory: 80,
+    category: "RELIC"
+  }
+];
+
 
 /* ---------------------------------------------------------------------
    CONDITIONING - permanent for the run
@@ -407,11 +468,30 @@ function benefitItem(run, id) {
   return { kind: "BENEFIT", id: b.id, name: b.name, desc: b.desc,
            price: benefitPrice(run, id), tag: b.tag };
 }
+function relicItem(run, id) {
+  const r = typeof RELICS !== "undefined" && RELICS[id];
+  if (!r) return null;
+  const tierPrices = { COMMON: 75, UNCOMMON: 140, RARE: 220, TRANSCENDENT: 320 };
+  const base = tierPrices[r.tier] || 100;
+  return { kind: "RELIC", id: r.id, name: r.name, desc: r.desc,
+           price: Math.round(base * priceScale(run.stage)), tag: r.tier + " RELIC" };
+}
 function healItem(run, frac, name) {
   const amount = Math.min(run.maxhp - run.hp, Math.round(run.maxhp * frac));
   return { kind: "HEAL", id: "heal_" + Math.round(frac * 100), name,
            desc: "recover " + amount + " health", price: healPrice(run, amount),
            tag: "CORNER", amount };
+}
+
+function campFocusItem(run, focusId) {
+  const f = (typeof campFocusOf === "function") ? campFocusOf(focusId) : null;
+  if (!f) return null;
+  const owned = run.camp && run.camp.focus === focusId;
+  return {
+    kind: "CAMP", id: "camp_" + f.id, focusId: f.id, name: "CAMP: " + f.name,
+    desc: f.blurb + (owned ? " (active)" : ""),
+    price: Math.round(18 * priceScale(run.stage)), tag: "CAMP",
+  };
 }
 
 /* what is still worth offering this player */
@@ -474,6 +554,17 @@ function shopStock(run, rnd) {
     add(healItem(run, run.hp < run.maxhp * 0.5 ? SHOP_CONFIG.healBig : SHOP_CONFIG.healSmall,
       run.hp < run.maxhp * 0.5 ? "Full Corner Work" : "Corner Work"));
   }
+  if (typeof CAMP_FOCUS_IDS !== "undefined" && CAMP_FOCUS_IDS.length) {
+    add(campFocusItem(run, pick(CAMP_FOCUS_IDS, R)));
+  }
+
+  // Relic Cabinet: offer 1 relic if available
+  if (typeof RELICS !== "undefined" && typeof RELIC_IDS !== "undefined") {
+    const unownedRelics = RELIC_IDS.filter((id) => (run.relics || []).indexOf(id) < 0);
+    if (unownedRelics.length > 0) {
+      add(relicItem(run, pick(unownedRelics, R)));
+    }
+  }
 
   let benefits = 0, corners = 1, guard = 0;      // the guaranteed slot counts
   while (out.length < size && guard++ < 60) {
@@ -526,6 +617,10 @@ function buyItem(run, item) {
       if ((run.benefits || []).indexOf(item.id) >= 0) return { ok: false, reason: "owned" };
       if (!BENEFITS[item.id]) return { ok: false, reason: "no_item" };
       break;
+    case "RELIC":
+      if ((run.relics || []).indexOf(item.id) >= 0) return { ok: false, reason: "owned" };
+      if (typeof RELICS === "undefined" || !RELICS[item.id]) return { ok: false, reason: "no_item" };
+      break;
     case "CONDITIONING": {
       const c = CONDITIONING[item.id];
       if (!c) return { ok: false, reason: "no_item" };
@@ -538,6 +633,11 @@ function buyItem(run, item) {
       break;
     case "HEAL":
       if (run.hp >= run.maxhp) return { ok: false, reason: "healthy" };
+      break;
+    case "CAMP":
+      if (!item.focusId || (typeof campFocusOf === "function" && !campFocusOf(item.focusId))) {
+        return { ok: false, reason: "no_item" };
+      }
       break;
     case "REROLL":
       break;
@@ -571,6 +671,10 @@ function buyItem(run, item) {
       if (b && b.onPick) b.onPick(run);
       break;
     }
+    case "RELIC": {
+      (run.relics = run.relics || []).push(item.id);
+      break;
+    }
     case "CONDITIONING": {
       if (!run.conditioning) run.conditioning = {};
       run.conditioning[item.id] = conditioningTier(run, item.id) + 1;
@@ -583,6 +687,11 @@ function buyItem(run, item) {
       break;
     case "HEAL":
       run.hp = Math.min(run.maxhp, run.hp + (item.amount || Math.round(run.maxhp * SHOP_CONFIG.healSmall)));
+      break;
+    case "CAMP":
+      run.camp = normalizeCampPlan
+        ? normalizeCampPlan({ focus: item.focusId, workload: (run.camp && run.camp.workload) || "standard" })
+        : { focus: item.focusId, workload: "standard" };
       break;
     case "REROLL":
       run.rerolls = ((run.rerolls || 0) + 1);

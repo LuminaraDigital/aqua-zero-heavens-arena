@@ -318,22 +318,32 @@ const PROFILE = {
    --------------------------------------------------------------------- */
 const has = (arr, k) => !!arr && arr.indexOf(k) >= 0;
 
-function reactionKind(ev) {
+/* `bar` is the fighter this animation is for, so "how big was that hit"
+   can be asked as a share of HIS health rather than as a flat number -
+   `ev.dmg >= 26` was written against a TECH_DMG_SCALE that has moved
+   twice since. See dmgShare() in battle/effects.js. Callers that do not
+   know the fighter fall back to a 100-point bar, which is what the flat
+   number assumed anyway. */
+function reactionKind(ev, bar) {
   if (!ev) return "still";
   if (ev.whiff) return "slip";               // they made it miss
   /* ev.guarded means the OTHER fighter chose a guard - nothing was thrown
      at this one, so this one does nothing */
   if (!ev.hit) return "still";
   if (ev.blocked) return "blocked";
-  if (ev.launcher || ev.dmg >= 26) return "stagger";
+  if (ev.launcher || hitShare(ev, bar) >= STAGGER_SHARE) return "stagger";
   return "recoil";
+}
+function hitShare(ev, bar) {
+  return typeof dmgShare === "function" ? dmgShare(bar, ev && ev.dmg)
+    : ((ev && ev.dmg) || 0) / (((bar && bar.maxhp) || 100));
 }
 
 /* NOT the card kindOf - the game already has a function of that name for
    fight-data cards, declared later, which silently won the collision and
    crashed on a null tech. Named apart so both can exist. */
-function animKindOf(tech, ev) {
-  if (!tech) return reactionKind(ev);
+function animKindOf(tech, ev, bar) {
+  if (!tech) return reactionKind(ev, bar);
   const f = tech.flags || [];
   const cls = tech.cls;
   /* where the fight actually is beats where the technique nominally
@@ -365,19 +375,19 @@ function animKindOf(tech, ev) {
 }
 
 /* a technique that has earned the long version */
-function isHeavy(tech, ev) {
+function isHeavy(tech, ev, bar) {
   if (!tech) return false;
   const f = tech.flags || [];
   if (tech.sig || has(f, "finisher") || has(f, "elite")) return true;
-  return has(f, "power") && !!ev && !!ev.hit && (ev.dmg || 0) >= 30;
+  return has(f, "power") && !!ev && !!ev.hit && hitShare(ev, bar) >= HEAVY_SWING_SHARE;
 }
 
 /* ---------------------------------------------------------------------
    animFor - the descriptor. Pure: same inputs, same object.
    --------------------------------------------------------------------- */
-function animFor(tech, ev, motion) {
+function animFor(tech, ev, motion, bar) {
   const on = motion !== false;
-  const kind = animKindOf(tech, ev);
+  const kind = animKindOf(tech, ev, bar);
   const base = ANIM_CONFIG.kinds[kind] || ANIM_CONFIG.kinds.still;
 
   if (!on) {
@@ -387,7 +397,7 @@ function animFor(tech, ev, motion) {
              scale: 1, lean: 0, flash: 0, wind: 0, still: true };
   }
 
-  const heavy = isHeavy(tech, ev);
+  const heavy = isHeavy(tech, ev, bar);
   const H = ANIM_CONFIG.heavy;
   const m = heavy ? H.ampMul : 1;
   let dur = heavy ? Math.min(H.durMax, Math.round(base.dur * H.durMul)) : base.dur;
@@ -416,9 +426,9 @@ function animFor(tech, ev, motion) {
 }
 
 /* convenience for callers holding an id rather than the technique object */
-function animForId(id, ev, motion) {
+function animForId(id, ev, motion, bar) {
   const t = (typeof TECH !== "undefined" && TECH) ? TECH[id] : null;
-  return animFor(t || null, ev, motion);
+  return animFor(t || null, ev, motion, bar);
 }
 
 /* ---------------------------------------------------------------------
@@ -430,7 +440,9 @@ function animForId(id, ev, motion) {
    --------------------------------------------------------------------- */
 function startAnim(side, tech, ev, motion) {
   if (!side) return null;
-  const a = animFor(tech, ev, motion);
+  /* the fighter being animated IS the bar the hit landed on, so every
+     caller already has what the share thresholds need */
+  const a = animFor(tech, ev, motion, side);
   a.f = 0;            // frames elapsed
   a.done = false;
   side.anim = a;

@@ -55,6 +55,10 @@ const INTENT_TELLS = {
 
 function intentFor(d) {
   if (!d || d.hotseat) return null;                 // two humans keep their secrets
+  /* The tower's "No-Tell Dark Matches" floor rule sets d.noTell and nothing
+     anywhere read it, so the floor whose whole identity is fighting blind
+     played exactly like every other floor. */
+  if (d.noTell) return null;
   if (d.eSuper) return INTENT_TELLS.SIGNATURE;
   const t = d.eTech;
   if (!t) return null;

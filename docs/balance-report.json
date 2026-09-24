@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-09-24T09:36:57.573Z",
+  "generator": "tools/gen-docs.js",
+  "git": {
+    "shortSha": "e294dab"
+  },
+  "audit": {
+    "command": "node tools/audit-balance.js 4",
+    "repsPerMatchup": 4,
+    "fights": 2400
+  },
+  "roster": {
+    "fighters": 25,
+    "best": {
+      "name": "Randall Stevens",
+      "ratePct": 62.5
+    },
+    "worst": {
+      "name": "Derek Nichols",
+      "ratePct": 47.9
+    },
+    "gapPts": 14.6,
+    "atBestRate": 1,
+    "atWorstRate": 2,
+    "identicalAtExtreme": 2,
+    "verdict": "TIGHT - the roster is competitive"
+  },
+  "discipline": {
+    "count": 19,
+    "best": {
+      "name": "Kenpo Karate",
+      "ratePct": 58.3
+    },
+    "worst": {
+      "name": "Submission Grappling",
+      "ratePct": 50
+    },
+    "gapPts": 8.3
+  },
+  "rangeSharePct": {
+    "LONG": 25.2,
+    "MID": 26.4,
+    "CLINCH": 18,
+    "GROUND": 30.5
+  },
+  "finishSharePct": {
+    "submission": 33.4,
+    "strike": 41.5
+  },
+  "fightLength": {
+    "avgTurns": 15.4,
+    "turnCap": 60,
+    "hitCapPct": 0
+  },
+  "techniques": {
+    "thrown": 264,
+    "total": 427,
+    "coveragePct": 61.8
+  }
+}

@@ -13,11 +13,35 @@ const TrophyRoom = {
 
   getTrophyList: function(save) {
     const list = [];
-    const pRank = (save && save.ranking && save.ranking.rankIndex) || 0;
-    const peakRank = (save && save.ranking && save.ranking.peakRankIndex) || pRank;
-    const streak = (save && save.streak) || 0;
-    const bestStreak = (save && save.bestStreak) || streak;
-    const towerMax = (save && save.tower && save.tower.unlockedFloors) || 1;
+    /* THESE FIVE READS WERE ALL POINTED AT FIELDS THAT DO NOT EXIST, which
+       locked 12 of the 16 trophies permanently - including all seven division
+       belts for a player who had actually earned them.
+         save.ranking is {players, audit} (see ranking-store.js); the player's
+       own grade lives at save.ranking.players["you"], never on the block root.
+         save.streak / save.bestStreak are written by nothing anywhere in the
+       codebase - the real streaks are the daily's and the ranking service's.
+         save.tower does not exist either: TowerMode keeps its floors in its own
+       localStorage key, so the room has to ask the module. */
+    const rkBlock = (save && save.ranking) || {};
+    const me = (rkBlock.players && rkBlock.players["you"]) || {};
+    /* the root reads stay as a fallback: they are what a hand-built save or an
+       older export looks like, and falling back costs nothing */
+    const pRank = me.rankIndex || rkBlock.rankIndex || 0;
+    const peakRank = me.peakRankIndex || rkBlock.peakRankIndex || pRank;
+    const dailyBlock = (save && save.daily) || {};
+    const streak = me.streak || dailyBlock.streak || (save && save.streak) || 0;
+    const bestStreak = Math.max(
+      me.bestStreak || 0,
+      dailyBlock.bestStreak || 0,
+      (save && save.bestStreak) || 0,
+      (save && save.rec && save.rec.bestSurv) || 0,
+      streak
+    );
+    var towerMax = (save && save.tower && save.tower.unlockedFloors) || 0;
+    if (!towerMax && typeof TowerMode !== "undefined" && TowerMode.getState) {
+      try { towerMax = TowerMode.getState().unlockedFloors || 0; } catch (e) { towerMax = 0; }
+    }
+    towerMax = towerMax || 1;
     const titles = (save && save.titles) || [];
 
     // Division Belts
@@ -120,6 +144,46 @@ const TrophyRoom = {
       color: "#f43f5e",
       unlocked: towerMax >= 200,
       desc: "Conquered all 200 floors of the Heavens Arena Tower.",
+    });
+
+    // Survival Gauntlet Trophies
+    const gauntletVictories = (save && save.rec && save.rec.gauntletVictories) || 0;
+    const bestEndless = (save && save.rec && save.rec.bestEndless) || 0;
+    list.push({
+      id: "GAUNTLET_APEX",
+      name: "Apex Gauntlet Champion Trophy",
+      cat: "GAUNTLET MASTERY",
+      color: "#eab308",
+      unlocked: gauntletVictories >= 1 || bestEndless >= 10,
+      desc: "Conquered the 10-Wave Apex Sovereign in Survival Gauntlet.",
+    });
+    list.push({
+      id: "GAUNTLET_OVERDRIVE_20",
+      name: "Overdrive Gladiator Laurel (Wave 20+)",
+      cat: "GAUNTLET MASTERY",
+      color: "#a855f7",
+      unlocked: bestEndless >= 20,
+      desc: "Pushed beyond victory into the infinite Endless Overdrive to Wave 20+.",
+    });
+
+    // Weekly Mutator Championship Trophies
+    const weeklyVictories = (save && ((save.weekly && save.weekly.victories) || (save.rec && save.rec.weeklyVictories))) || 0;
+    const bestWeeklyTier = (save && ((save.weekly && save.weekly.bestTier) || (save.rec && save.rec.bestWeeklyTier))) || 0;
+    list.push({
+      id: "WEEKLY_CHAMPION",
+      name: "Crown of the Weekly Arena",
+      cat: "WEEKLY CHAMPION",
+      color: "#ec4899",
+      unlocked: weeklyVictories >= 1 || bestWeeklyTier >= 5,
+      desc: "Conquered the 5-Tier Weekly Mutator Championship and defeated the Apex Weekly Sovereign.",
+    });
+    list.push({
+      id: "WEEKLY_OVERDRIVE_8",
+      name: "Weekly Overdrive Laurel (Tier 8+)",
+      cat: "WEEKLY CHAMPION",
+      color: "#8b5cf6",
+      unlocked: bestWeeklyTier >= 8,
+      desc: "Pushed beyond the 5-tier championship into infinite Weekly Overdrive to Tier 8+.",
     });
 
     return list;
@@ -228,20 +292,28 @@ const TrophyRoom = {
       ctx.fillText(sel.desc, detailX + 24, detailY + 144);
 
       // Visual Trophy Belt Graphic representation
-      ctx.fillStyle = sel.unlocked ? sel.color : "#334155";
-      ctx.beginPath();
-      ctx.arc(detailX + detailW / 2, detailY + 230, 42, 0, Math.PI * 2);
-      ctx.fill();
+      if (typeof ThreeEngine !== "undefined" && ThreeEngine.getState().initialized) {
+        ctx.clearRect(detailX + 30, detailY + 160, detailW - 60, detailH - 175);
+        ctx.fillStyle = sel.unlocked ? "#fbbf24" : "#64748b";
+        ctx.font = "bold 10px Bahnschrift, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("[ DRAG TO ROTATE 3D BELT ]", detailX + detailW / 2, detailY + detailH - 12);
+      } else {
+        ctx.fillStyle = sel.unlocked ? sel.color : "#334155";
+        ctx.beginPath();
+        ctx.arc(detailX + detailW / 2, detailY + 230, 42, 0, Math.PI * 2);
+        ctx.fill();
 
-      ctx.fillStyle = "#0a0c12";
-      ctx.beginPath();
-      ctx.arc(detailX + detailW / 2, detailY + 230, 32, 0, Math.PI * 2);
-      ctx.fill();
+        ctx.fillStyle = "#0a0c12";
+        ctx.beginPath();
+        ctx.arc(detailX + detailW / 2, detailY + 230, 32, 0, Math.PI * 2);
+        ctx.fill();
 
-      ctx.fillStyle = sel.unlocked ? "#fbbf24" : "#475569";
-      ctx.font = "900 14px Bahnschrift, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("AZHA", detailX + detailW / 2, detailY + 235);
+        ctx.fillStyle = sel.unlocked ? "#fbbf24" : "#475569";
+        ctx.font = "900 14px Bahnschrift, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("AZHA", detailX + detailW / 2, detailY + 235);
+      }
     }
 
     // Footer

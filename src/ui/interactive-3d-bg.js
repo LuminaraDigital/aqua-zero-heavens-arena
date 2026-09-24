@@ -345,13 +345,15 @@ const Interactive3DBG = (function () {
      Rendering: 3D Grid, Particles, Spotlights & Hologram Showcase
      ------------------------------------------------------------------- */
   function draw3DCyberGrid(cx, cam, screenW, screenH, theme) {
-    const floorY = 160; // 3D floor level
-    const gridCols = 18;
-    const gridStepX = 70;
-    const minZ = 40;
-    const maxZ = 620;
-    const zStep = 45;
-    const wave = Math.sin(Date.now() * 0.002) * 8 + state.audioLevel * 14;
+    const floorY = 165; // 3D floor level
+    const gridCols = 20;
+    const gridStepX = 65;
+    const minZ = 35;
+    const maxZ = 700;
+    const zStep = 40;
+    const now = Date.now();
+    const wave = Math.sin(now * 0.002) * 6 + state.audioLevel * 16;
+    const pulseRing = (now * 0.06) % 650;
 
     cx.save();
     cx.lineWidth = 1.0;
@@ -365,7 +367,7 @@ const Interactive3DBG = (function () {
       if (pNear.visible && pFar.visible) {
         const grad = cx.createLinearGradient(pNear.x, pNear.y, pFar.x, pFar.y);
         grad.addColorStop(0, theme.grid);
-        grad.addColorStop(0.7, theme.horizon);
+        grad.addColorStop(0.65, theme.horizon);
         grad.addColorStop(1, "rgba(0,0,0,0)");
 
         cx.strokeStyle = grad;
@@ -380,26 +382,47 @@ const Interactive3DBG = (function () {
     for (let wz = minZ; wz <= maxZ; wz += zStep) {
       const leftX = (-gridCols / 2) * gridStepX;
       const rightX = (gridCols / 2) * gridStepX;
-      const pL = project3D(leftX, floorY + Math.sin(wz * 0.05 + Date.now() * 0.003) * 4, wz, cam, screenW, screenH);
-      const pR = project3D(rightX, floorY + Math.sin(wz * 0.05 + Date.now() * 0.003) * 4, wz, cam, screenW, screenH);
+      const pL = project3D(leftX, floorY + Math.sin(wz * 0.05 + now * 0.003) * 3, wz, cam, screenW, screenH);
+      const pR = project3D(rightX, floorY + Math.sin(wz * 0.05 + now * 0.003) * 3, wz, cam, screenW, screenH);
 
       if (pL.visible || pR.visible) {
         const depthAlpha = Math.max(0, 1 - (wz - minZ) / (maxZ - minZ));
-        cx.strokeStyle = theme.grid.replace(/[\d.]+\)$/, `${(depthAlpha * 0.35).toFixed(3)})`);
+        const isPulse = Math.abs(wz - pulseRing) < 30;
+        const pulseBoost = isPulse ? 0.35 : 0;
+        cx.strokeStyle = theme.grid.replace(/[\d.]+\)$/, `${(depthAlpha * 0.35 + pulseBoost).toFixed(3)})`);
+        cx.lineWidth = isPulse ? 1.8 : 0.8;
         cx.beginPath();
         cx.moveTo(pL.x, pL.y);
         cx.lineTo(pR.x, pR.y);
         cx.stroke();
       }
     }
+
+    // Concentric Arena Octagon Rings on floor
+    const ringRadii = [90, 180, 300, 440];
+    for (let rIdx = 0; rIdx < ringRadii.length; rIdx++) {
+      const baseR = ringRadii[rIdx] + (pulseRing * 0.15) % 80;
+      const ringGrad = cx.createRadialGradient(screenW / 2, screenH * 0.85, 10, screenW / 2, screenH * 0.85, baseR * 1.5);
+      ringGrad.addColorStop(0, "rgba(0,0,0,0)");
+      ringGrad.addColorStop(0.7, theme.grid.replace(/[\d.]+\)$/, "0.22)"));
+      ringGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+      cx.strokeStyle = ringGrad;
+      cx.lineWidth = 1.2;
+      cx.beginPath();
+      cx.ellipse(screenW / 2 + cam.yaw * 120, screenH * 0.88 + cam.pitch * 60, baseR * 1.4, baseR * 0.38, 0, 0, Math.PI * 2);
+      cx.stroke();
+    }
+
     cx.restore();
   }
 
   function draw3DParticles(cx, particles, cam, screenW, screenH, theme) {
     cx.save();
     const count = particles.length;
+    const now = Date.now();
 
-    // Draw connecting plexus lines between close particles
+    // Draw connecting high-energy laser plexus arcs
     for (let i = 0; i < count; i++) {
       const p1 = particles[i];
       const proj1 = project3D(p1.x, p1.y, p1.z, cam, screenW, screenH);
@@ -412,14 +435,14 @@ const Interactive3DBG = (function () {
         const dz = p1.z - p2.z;
         const distSq = dx * dx + dy * dy + dz * dz;
 
-        if (distSq < 130 * 130) {
+        if (distSq < 110 * 110) {
           const proj2 = project3D(p2.x, p2.y, p2.z, cam, screenW, screenH);
           if (proj2.visible) {
-            const lineAlpha = (1 - Math.sqrt(distSq) / 130) * 0.18 * p1.alpha;
+            const lineAlpha = (1 - Math.sqrt(distSq) / 110) * 0.16 * p1.alpha;
             cx.strokeStyle = theme.primary.replace(/#/, "").length === 6
               ? `rgba(${parseInt(theme.primary.slice(1, 3), 16)},${parseInt(theme.primary.slice(3, 5), 16)},${parseInt(theme.primary.slice(5, 7), 16)},${lineAlpha.toFixed(3)})`
               : theme.glow;
-            cx.lineWidth = 0.75;
+            cx.lineWidth = 0.65;
             cx.beginPath();
             cx.moveTo(proj1.x, proj1.y);
             cx.lineTo(proj2.x, proj2.y);
@@ -428,56 +451,110 @@ const Interactive3DBG = (function () {
         }
       }
 
-      // Draw particle node
-      const sz = Math.max(1, p1.size * proj1.scale * 1.6);
-      const audioPulse = 1 + state.audioLevel * 0.6;
-      cx.fillStyle = i % 3 === 0 ? theme.accent : theme.primary;
-      cx.globalAlpha = p1.alpha * Math.min(1, proj1.scale * 1.8);
+      // Draw kinetic spark needle with velocity motion streak
+      const sz = Math.max(1.2, p1.size * proj1.scale * 1.5);
+      const audioPulse = 1 + state.audioLevel * 0.7;
+      const speedX = p1.vx * proj1.scale * 18;
+      const speedY = (p1.vy - 0.4) * proj1.scale * 18; // upward draft
+      const isHot = i % 3 === 0;
+
+      // Glow halo
+      cx.save();
+      cx.globalAlpha = p1.alpha * Math.min(0.85, proj1.scale * 1.6);
+      cx.fillStyle = isHot ? theme.accent : theme.primary;
+      cx.shadowColor = isHot ? theme.accent : theme.primary;
+      cx.shadowBlur = 8 * proj1.scale;
+
+      // Motion streak needle
       cx.beginPath();
-      cx.arc(proj1.x, proj1.y, sz * audioPulse, 0, Math.PI * 2);
+      cx.moveTo(proj1.x + speedX, proj1.y + speedY);
+      cx.lineTo(proj1.x - speedX * 0.4, proj1.y - speedY * 0.4);
+      cx.lineWidth = sz * 0.8 * audioPulse;
+      cx.strokeStyle = isHot ? theme.accent : theme.primary;
+      cx.stroke();
+
+      // White-hot core bead
+      cx.fillStyle = "#ffffff";
+      cx.beginPath();
+      cx.arc(proj1.x, proj1.y, Math.max(0.8, sz * 0.45 * audioPulse), 0, Math.PI * 2);
       cx.fill();
+      cx.restore();
     }
     cx.restore();
   }
 
   function drawVolumetricSpotlights(cx, mouse, screenW, screenH, theme) {
-    const lightX = screenW * mouse.x;
-    const lightY = screenH * 0.08;
-    const spotR = 240 + state.audioLevel * 80;
-
+    const now = Date.now();
     cx.save();
-    // Overhead light fixture glow
-    const gFixture = cx.createRadialGradient(lightX, lightY, 5, lightX, lightY, 60);
+
+    // 1. Dual Sweeping Arena Searchlights (Championship Stadium Effect)
+    const sweepL_Angle = Math.sin(now * 0.0012) * 0.35 + 0.25;
+    const sweepR_Angle = Math.sin(now * 0.0015 + 1.8) * 0.35 - 0.25;
+    const rigL_X = screenW * 0.12;
+    const rigR_X = screenW * 0.88;
+    const rigY = -20;
+    const spotR = 260 + state.audioLevel * 100;
+
+    // Left Sweeping Beam
+    const targetLX = screenW * (0.45 + Math.sin(now * 0.0012) * 0.3);
+    const gradBeamL = cx.createRadialGradient(rigL_X, rigY, 15, targetLX, screenH * 0.85, spotR);
+    gradBeamL.addColorStop(0, theme.spotlight);
+    gradBeamL.addColorStop(0.4, theme.spotlight.replace(/[\d.]+\)$/, "0.05)"));
+    gradBeamL.addColorStop(1, "rgba(0,0,0,0)");
+    cx.fillStyle = gradBeamL;
+    cx.beginPath();
+    cx.moveTo(rigL_X, rigY);
+    cx.lineTo(targetLX - spotR * 0.7, screenH);
+    cx.lineTo(targetLX + spotR * 0.7, screenH);
+    cx.closePath();
+    cx.fill();
+
+    // Right Sweeping Beam
+    const targetRX = screenW * (0.55 + Math.sin(now * 0.0015 + 1.8) * 0.3);
+    const gradBeamR = cx.createRadialGradient(rigR_X, rigY, 15, targetRX, screenH * 0.85, spotR);
+    gradBeamR.addColorStop(0, theme.spotlight);
+    gradBeamR.addColorStop(0.4, theme.spotlight.replace(/[\d.]+\)$/, "0.05)"));
+    gradBeamR.addColorStop(1, "rgba(0,0,0,0)");
+    cx.fillStyle = gradBeamR;
+    cx.beginPath();
+    cx.moveTo(rigR_X, rigY);
+    cx.lineTo(targetRX - spotR * 0.7, screenH);
+    cx.lineTo(targetRX + spotR * 0.7, screenH);
+    cx.closePath();
+    cx.fill();
+
+    // 2. Cursor-Tracking Arena Spotlight
+    const lightX = screenW * mouse.x;
+    const lightY = screenH * 0.05;
+    const curSpotR = 200 + state.audioLevel * 60;
+
+    // Fixture glow
+    const gFixture = cx.createRadialGradient(lightX, lightY, 2, lightX, lightY, 50);
     gFixture.addColorStop(0, theme.primary);
     gFixture.addColorStop(0.3, theme.glow);
     gFixture.addColorStop(1, "rgba(0,0,0,0)");
     cx.fillStyle = gFixture;
     cx.beginPath();
-    cx.arc(lightX, lightY, 60, 0, Math.PI * 2);
-    cx.fill();
-
-    // Cone beam down to the floor
-    const beamGrad = cx.createRadialGradient(lightX, screenH * 0.75, 20, lightX, screenH * 0.75, spotR);
-    beamGrad.addColorStop(0, theme.spotlight);
-    beamGrad.addColorStop(0.5, theme.spotlight.replace(/[\d.]+\)$/, "0.04)"));
-    beamGrad.addColorStop(1, "rgba(0,0,0,0)");
-
-    cx.fillStyle = beamGrad;
-    cx.beginPath();
-    cx.moveTo(lightX, lightY);
-    cx.lineTo(lightX - spotR, screenH);
-    cx.lineTo(lightX + spotR, screenH);
-    cx.closePath();
+    cx.arc(lightX, lightY, 50, 0, Math.PI * 2);
     cx.fill();
 
     // Floor specular oval
     cx.fillStyle = theme.glow;
     cx.beginPath();
-    cx.ellipse(lightX, screenH * 0.88, spotR * 0.6, 24, 0, 0, Math.PI * 2);
+    cx.ellipse(lightX, screenH * 0.88, curSpotR * 0.55, 20, 0, 0, Math.PI * 2);
     cx.fill();
+
+    // 3. Cinematic Atmospheric Vignette (Dark Obsidian with Edge Rim Glow)
+    const vignette = cx.createRadialGradient(screenW / 2, screenH / 2, screenH * 0.35, screenW / 2, screenH / 2, screenW * 0.75);
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(0.7, "rgba(3,4,8,0.45)");
+    vignette.addColorStop(1, "rgba(2,3,6,0.92)");
+    cx.fillStyle = vignette;
+    cx.fillRect(0, 0, screenW, screenH);
 
     cx.restore();
   }
+
 
   function drawShockwaves(cx, waves) {
     if (!waves || !waves.length) return;
@@ -548,11 +625,11 @@ const Interactive3DBG = (function () {
 
     // Prev fighter fading out
     if (prog < 1.0 && prevF) {
-      const outAlpha = (1.0 - prog) * 0.35;
+      const outAlpha = (1.0 - prog) * 0.22;
       drawFighterHologram(cx, state.prevFighterId, leftX, charBaseY, charH, outAlpha, theme, true);
     }
     // Current fighter fading in
-    const inAlpha = prog * 0.38;
+    const inAlpha = prog * 0.25;
     drawFighterHologram(cx, state.fighterId, rightX, charBaseY, charH, inAlpha, theme, false);
   }
 

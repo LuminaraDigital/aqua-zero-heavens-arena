@@ -28,10 +28,18 @@ var SettingsGUI = (function() {
         llmEndpoint: ""
     };
 
+    var displaySettings = {
+        displayMode: "modern",   // "modern" | "theater" | "retro"
+        crtScanlines: false,
+        hudOpacity: 100          // 50 - 100
+    };
+
     function init() {
         loadAudioSettings();
         loadAISettings();
+        loadDisplaySettings();
     }
+
 
     function loadAudioSettings() {
         if (typeof localStorage === "undefined") return;
@@ -318,6 +326,67 @@ var SettingsGUI = (function() {
         ctx.restore();
     }
 
+    function loadDisplaySettings() {
+        if (typeof localStorage === "undefined") return;
+        try {
+            var saved = localStorage.getItem("aquazero_display_settings");
+            if (saved) {
+                var parsed = JSON.parse(saved);
+                if (parsed.displayMode !== undefined) displaySettings.displayMode = parsed.displayMode;
+                if (parsed.crtScanlines !== undefined) displaySettings.crtScanlines = !!parsed.crtScanlines;
+                if (parsed.hudOpacity !== undefined) displaySettings.hudOpacity = Number(parsed.hudOpacity);
+            }
+            applyDisplaySettings();
+        } catch (e) {}
+    }
+
+    function saveDisplaySettings() {
+        if (typeof localStorage === "undefined") return;
+        try {
+            localStorage.setItem("aquazero_display_settings", JSON.stringify(displaySettings));
+        } catch (e) {}
+    }
+
+    function applyDisplaySettings() {
+        if (typeof document === "undefined" || !document.body) return;
+        document.body.dataset.displayMode = displaySettings.displayMode;
+        document.body.classList.toggle("display-mode-theater", displaySettings.displayMode === "theater");
+        document.body.classList.toggle("display-mode-retro", displaySettings.displayMode === "retro");
+        document.body.classList.toggle("display-mode-modern", displaySettings.displayMode === "modern");
+        document.body.classList.toggle("crt-scanlines", !!displaySettings.crtScanlines);
+        if (typeof window !== "undefined" && typeof CustomEvent !== "undefined") {
+            window.dispatchEvent(new CustomEvent("display_mode_changed", { detail: displaySettings }));
+        }
+
+    }
+
+    function getDisplaySettings() {
+        return displaySettings;
+    }
+
+    function setDisplaySetting(key, value) {
+        if (displaySettings[key] !== undefined) {
+            displaySettings[key] = value;
+            saveDisplaySettings();
+            applyDisplaySettings();
+            return displaySettings[key];
+        }
+        return null;
+    }
+
+    function toggleDisplaySetting(key) {
+        if (key === "displayMode") {
+            var modes = ["modern", "theater", "retro"];
+            var idx = (modes.indexOf(displaySettings.displayMode) + 1) % modes.length;
+            displaySettings.displayMode = modes[idx];
+        } else if (key === "crtScanlines") {
+            displaySettings.crtScanlines = !displaySettings.crtScanlines;
+        }
+        saveDisplaySettings();
+        applyDisplaySettings();
+        return displaySettings[key];
+    }
+
     init();
 
     return {
@@ -326,6 +395,10 @@ var SettingsGUI = (function() {
         getAISettings: getAISettings,
         setAISetting: setAISetting,
         toggleAISetting: toggleAISetting,
+        getDisplaySettings: getDisplaySettings,
+        setDisplaySetting: setDisplaySetting,
+        toggleDisplaySetting: toggleDisplaySetting,
+        applyDisplaySettings: applyDisplaySettings,
         startRebinding: startRebinding,
         handleKeyEvent: handleKeyEvent,
         getAudioSettings: getAudioSettings,
@@ -337,3 +410,4 @@ var SettingsGUI = (function() {
 if (typeof module !== "undefined" && module.exports) {
     module.exports = SettingsGUI;
 }
+

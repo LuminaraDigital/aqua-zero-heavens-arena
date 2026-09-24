@@ -155,15 +155,15 @@ T("kesa_gatame",  "Kesa-Gatame",         "judo", "SUB",    "GROUND", 20, 92, 64,
 T("yoko_shiho",   "Yoko-Shiho-Gatame",   "judo", "SETUP",  "GROUND", 10, 92, 66,  6, 3, { eff: { st: "PINNED", ch: 55 }, flags: ["pin"] });
 T("tate_shiho",   "Tate-Shiho-Gatame",   "judo", "SETUP",  "GROUND", 12, 90, 64,  6, 4, { eff: { st: "PINNED", ch: 60 }, flags: ["pin"] });
 T("kami_shiho",   "Kami-Shiho-Gatame",   "judo", "SETUP",  "GROUND", 10, 92, 64,  6, 3, { eff: { st: "PINNED", ch: 55 }, flags: ["pin"] });
-T("okuri_eri",    "Okuri-Eri-Jime",      "judo", "SUB",    "GROUND", 46, 78, 62, 11, 6, { eff: { st: "WINDED", ch: 60 }, flags: ["choke"] });
-T("hadaka_jime",  "Hadaka-Jime",         "judo", "SUB",    "GROUND", 50, 74, 60, 12, 7, { eff: { st: "WINDED", ch: 65 }, flags: ["choke", "finisher"] });
-T("sankaku_jime", "Sankaku-Jime",        "judo", "SUB",    "GROUND", 48, 74, 62, 12, 7, { eff: { st: "WINDED", ch: 60 }, flags: ["choke"] });
-T("judo_juji",    "Ude-Hishigi-Juji-Gatame", "judo", "SUB", "GROUND", 47, 78, 64, 11, 5, { eff: { st: "ARM_HURT", ch: 62 }, flags: ["finisher"] });
+T("okuri_eri",    "Okuri-Eri-Jime",      "judo", "SUB",    "GROUND", 35, 74, 62, 11, 6, { eff: { st: "WINDED", ch: 60 }, flags: ["choke"] });
+T("hadaka_jime",  "Hadaka-Jime",         "judo", "SUB",    "GROUND", 38, 70, 60, 12, 7, { eff: { st: "WINDED", ch: 65 }, flags: ["choke", "finisher"] });
+T("sankaku_jime", "Sankaku-Jime",        "judo", "SUB",    "GROUND", 37, 70, 62, 12, 7, { eff: { st: "WINDED", ch: 60 }, flags: ["choke"] });
+T("judo_juji",    "Ude-Hishigi-Juji-Gatame", "judo", "SUB", "GROUND", 36, 74, 64, 11, 5, { eff: { st: "ARM_HURT", ch: 62 }, flags: ["finisher"] });
 
 /* ---------------- Wrestling ---------------- */
-T("double_leg",   "Double Leg",          "wrestling", "THROW", "MID", 32, 84, 70,  9, 1, { moves: "GROUND", flags: ["takedown"] });
-T("single_leg",   "Single Leg",          "wrestling", "THROW", "MID", 28, 88, 74,  8, 1, { moves: "GROUND", flags: ["takedown"] });
-T("blast_double", "Blast Double",        "wrestling", "THROW", "MID", 42, 74, 62, 12, 6, { moves: "GROUND", eff: { st: "STUNNED", ch: 26 }, flags: ["takedown", "power"] });
+T("double_leg",   "Double Leg",          "wrestling", "THROW", "MID", 32, 78, 70, 11, 1, { moves: "GROUND", flags: ["takedown"] });
+T("single_leg",   "Single Leg",          "wrestling", "THROW", "MID", 28, 82, 74, 10, 1, { moves: "GROUND", flags: ["takedown"] });
+T("blast_double", "Blast Double",        "wrestling", "THROW", "MID", 42, 70, 62, 14, 6, { moves: "GROUND", eff: { st: "STUNNED", ch: 26 }, flags: ["takedown", "power"] });
 T("ankle_pick",   "Ankle Pick",          "wrestling", "THROW", "CLINCH", 24, 90, 80,  7, 3, { moves: "GROUND", prio: 1 });
 T("duck_under",   "Duck Under",          "wrestling", "SETUP", "CLINCH", 8, 92, 86,  5, 2, { eff: { st: "OFF_BALANCE", ch: 55 }, prio: 1 });
 T("arm_drag",     "Arm Drag",            "wrestling", "SETUP", "CLINCH", 10, 90, 88,  5, 2, { eff: { st: "OFF_BALANCE", ch: 50 }, prio: 1 });
@@ -174,7 +174,7 @@ T("sprawl",       "Sprawl",              "wrestling", "GUARD", "ANY",     0, 100
 /* the elite end of freestyle - kit material, learned late */
 T("gut_wrench",   "Gut-Wrench Suplex",   "wrestling", "THROW", "GROUND", 44, 74, 60, 12, 8, { eff: { st: "STUNNED", ch: 30 }, flags: ["power", "elite"] });
 T("lat_drop",     "Lat Drop",            "wrestling", "THROW", "CLINCH", 45, 72, 62, 12, 7, { moves: "GROUND", eff: { st: "STUNNED", ch: 28 }, flags: ["elite"] });
-T("high_crotch",  "High-Crotch Blast",   "wrestling", "THROW", "MID",    43, 76, 64, 12, 7, { moves: "GROUND", flags: ["takedown", "elite"] });
+T("high_crotch",  "High-Crotch Blast",   "wrestling", "THROW", "MID",    43, 72, 64, 14, 7, { moves: "GROUND", flags: ["takedown", "elite"] });
 T("ride",         "Positional Ride",     "wrestling", "SETUP", "GROUND",  8, 94, 70,  5, 3, { eff: { st: "PINNED", ch: 45 }, flags: ["control"] });
 
 /* ---------------- Grappling / Sambo / Submission ---------------- */
@@ -182,38 +182,38 @@ T("body_lock",    "Body Lock",           "grappling", "SETUP", "CLINCH", 10, 92,
 T("chain_wrestle","Chain Wrestling",     "grappling", "SETUP", "CLINCH",  8, 94, 80,  5, 3, { eff: { st: "OFF_BALANCE", ch: 45 }, prio: 1 });
 T("pummel",       "Pummel",              "grappling", "SETUP", "CLINCH",  6, 96, 84,  4, 1, { prio: 1, flags: ["position"] });
 T("underhook",    "Underhook",           "grappling", "SETUP", "CLINCH",  8, 94, 78,  5, 2, { eff: { st: "HELD", ch: 40 } });
-T("gr_ground_esc","Technical Stand-Up",  "grappling", "SETUP", "GROUND",  4, 92, 86,  6, 2, { moves: "MID", prio: 1, flags: ["escape"] });
+T("gr_ground_esc","Technical Stand-Up",  "grappling", "SETUP", "GROUND",  4, 92, 86,  6, 2, { moves: "MID", prio: 1, flags: ["escape", "reset"] });
 
 T("sambo_throw",  "Sambo Throw",         "sambo", "THROW", "CLINCH", 40, 80, 66, 11, 4, { moves: "GROUND" });
 T("hip_throw",    "Hip Throw",           "sambo", "THROW", "CLINCH", 34, 84, 70,  9, 2, { moves: "GROUND" });
-T("heel_hook",    "Heel Hook",           "sambo", "SUB",   "GROUND", 52, 74, 62, 12, 7, { eff: { st: "LEG_HURT", ch: 70 }, flags: ["leglock", "finisher"] });
-T("kneebar",      "Kneebar",             "sambo", "SUB",   "GROUND", 46, 78, 64, 11, 5, { eff: { st: "LEG_HURT", ch: 60 }, flags: ["leglock"] });
-T("ankle_lock",   "Straight Ankle Lock", "sambo", "SUB",   "GROUND", 38, 84, 70,  9, 3, { eff: { st: "LEG_HURT", ch: 50 }, flags: ["leglock"] });
+T("heel_hook",    "Heel Hook",           "sambo", "SUB",   "GROUND", 40, 70, 62, 12, 7, { eff: { st: "LEG_HURT", ch: 70 }, flags: ["leglock", "finisher"] });
+T("kneebar",      "Kneebar",             "sambo", "SUB",   "GROUND", 35, 74, 64, 11, 5, { eff: { st: "LEG_HURT", ch: 60 }, flags: ["leglock"] });
+T("ankle_lock",   "Straight Ankle Lock", "sambo", "SUB",   "GROUND", 29, 80, 70,  9, 3, { eff: { st: "LEG_HURT", ch: 50 }, flags: ["leglock"] });
 T("scarf_hold",   "Scarf Hold",          "sambo", "SETUP", "GROUND",  8, 92, 68,  5, 2, { eff: { st: "PINNED", ch: 50 }, flags: ["pin"] });
-T("flying_armbar","Flying Armbar",       "sambo", "SUB",   "CLINCH", 50, 62, 60, 13, 8, { moves: "GROUND", eff: { st: "ARM_HURT", ch: 65 }, flags: ["finisher"] });
+T("flying_armbar","Flying Armbar",       "sambo", "SUB",   "CLINCH", 38, 58, 60, 13, 8, { moves: "GROUND", eff: { st: "ARM_HURT", ch: 65 }, flags: ["finisher"] });
 T("leg_entangle", "Leg Entanglement",    "sambo", "SETUP", "GROUND",  6, 94, 72,  5, 4, { eff: { st: "HELD", ch: 55 } });
 
 T("leg_drag",     "Leg Drag",            "subgrap", "SETUP", "GROUND",  8, 94, 76,  5, 3, { eff: { st: "PINNED", ch: 50 } });
 T("back_control", "Back Control",        "subgrap", "SETUP", "GROUND", 10, 90, 72,  6, 4, { eff: { st: "HELD", ch: 65 }, flags: ["dominant"] });
-T("darce",        "D'Arce Choke",        "subgrap", "SUB",   "GROUND", 48, 76, 64, 11, 6, { eff: { st: "WINDED", ch: 60 }, flags: ["choke", "finisher"] });
-T("anaconda",     "Anaconda Choke",      "subgrap", "SUB",   "GROUND", 46, 78, 66, 11, 6, { eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
-T("north_south",  "North-South Choke",   "subgrap", "SUB",   "GROUND", 44, 80, 66, 10, 5, { eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
+T("darce",        "D'Arce Choke",        "subgrap", "SUB",   "GROUND", 37, 72, 64, 11, 6, { eff: { st: "WINDED", ch: 60 }, flags: ["choke", "finisher"] });
+T("anaconda",     "Anaconda Choke",      "subgrap", "SUB",   "GROUND", 35, 74, 66, 11, 6, { eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
+T("north_south",  "North-South Choke",   "subgrap", "SUB",   "GROUND", 34, 76, 66, 10, 5, { eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
 
 /* ---------------- Brazilian Jiu-Jitsu ---------------- */
 T("guard_pull",   "Guard Pull",          "bjj", "SETUP", "CLINCH",  4, 94, 78,  5, 1, { moves: "GROUND", flags: ["position"] });
 T("scissor_sweep","Scissor Sweep",       "bjj", "THROW", "GROUND", 24, 88, 76,  7, 2, { eff: { st: "OFF_BALANCE", ch: 50 }, flags: ["sweep"] });
 T("hip_bump",     "Hip Bump Sweep",      "bjj", "THROW", "GROUND", 26, 86, 74,  7, 3, { eff: { st: "OFF_BALANCE", ch: 45 }, flags: ["sweep"] });
-T("triangle",     "Triangle Choke",      "bjj", "SUB",   "GROUND", 50, 74, 64, 12, 5, { eff: { st: "WINDED", ch: 60 }, flags: ["choke", "finisher"] });
-T("armbar",       "Juji-Gatame",         "bjj", "SUB",   "GROUND", 48, 78, 66, 11, 4, { eff: { st: "ARM_HURT", ch: 65 }, flags: ["finisher"] });
-T("rnc",          "Rear Naked Choke",    "bjj", "SUB",   "GROUND", 56, 72, 60, 13, 7, { eff: { st: "WINDED", ch: 70 }, flags: ["choke", "finisher"] });
-T("kimura",       "Kimura",              "bjj", "SUB",   "GROUND", 42, 82, 68, 10, 3, { eff: { st: "ARM_HURT", ch: 60 } });
-T("guillotine",   "Guillotine",          "bjj", "SUB",   "CLINCH", 44, 78, 68, 11, 4, { moves: "GROUND", eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
-T("omoplata",     "Omoplata",            "bjj", "SUB",   "GROUND", 40, 80, 66, 10, 5, { eff: { st: "ARM_HURT", ch: 55 } });
+T("triangle",     "Triangle Choke",      "bjj", "SUB",   "GROUND", 38, 70, 64, 12, 5, { eff: { st: "WINDED", ch: 60 }, flags: ["choke", "finisher"] });
+T("armbar",       "Juji-Gatame",         "bjj", "SUB",   "GROUND", 37, 74, 66, 11, 4, { eff: { st: "ARM_HURT", ch: 65 }, flags: ["finisher"] });
+T("rnc",          "Rear Naked Choke",    "bjj", "SUB",   "GROUND", 43, 68, 60, 13, 7, { eff: { st: "WINDED", ch: 70 }, flags: ["choke", "finisher"] });
+T("kimura",       "Kimura",              "bjj", "SUB",   "GROUND", 32, 78, 68, 10, 3, { eff: { st: "ARM_HURT", ch: 60 } });
+T("guillotine",   "Guillotine",          "bjj", "SUB",   "CLINCH", 34, 74, 68, 11, 4, { moves: "GROUND", eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
+T("omoplata",     "Omoplata",            "bjj", "SUB",   "GROUND", 31, 76, 66, 10, 5, { eff: { st: "ARM_HURT", ch: 55 } });
 T("mount",        "Mount",               "bjj", "SETUP", "GROUND",  8, 92, 70,  6, 2, { eff: { st: "PINNED", ch: 60 }, flags: ["dominant"] });
 T("back_take",    "Back Take",           "bjj", "SETUP", "GROUND", 10, 88, 72,  6, 4, { eff: { st: "HELD", ch: 60 }, flags: ["dominant"] });
-T("americana",    "Americana",           "bjj", "SUB",   "GROUND", 38, 84, 68,  9, 2, { eff: { st: "ARM_HURT", ch: 50 } });
+T("americana",    "Americana",           "bjj", "SUB",   "GROUND", 29, 80, 68,  9, 2, { eff: { st: "ARM_HURT", ch: 50 } });
 
-T("jj_wristlock", "Wrist Lock",          "jiujitsu", "SUB",   "CLINCH", 30, 86, 76,  8, 3, { eff: { st: "ARM_HURT", ch: 45 } });
+T("jj_wristlock", "Wrist Lock",          "jiujitsu", "SUB",   "CLINCH", 26, 86, 76,  8, 3, { eff: { st: "ARM_HURT", ch: 45 } });
 T("jj_throw",     "Kote-Gaeshi",         "jiujitsu", "THROW", "CLINCH", 32, 84, 72,  9, 3, { moves: "GROUND", eff: { st: "ARM_HURT", ch: 35 } });
 T("jj_break",     "Posture Break",       "jiujitsu", "SETUP", "GROUND",  6, 94, 78,  5, 2, { eff: { st: "OFF_BALANCE", ch: 50 } });
 
@@ -225,25 +225,26 @@ T("cage_press",   "Cage Press",          "mma", "SETUP",  "CLINCH", 10, 90, 68, 
 T("dirty_boxing", "Dirty Boxing",        "mma", "STRIKE", "CLINCH", 26, 90, 76,  7, 2, {});
 T("superman",     "Superman Punch",      "mma", "STRIKE", "MID",  38, 72, 66, 11, 6, { eff: { st: "STUNNED", ch: 26 }, flags: ["launcher"] });
 T("level_change", "Level Change",        "mma", "SETUP",  "MID",    4, 96, 88,  4, 1, { prio: 2, eff: { st: "OFF_BALANCE", ch: 40 }, flags: ["feint"] });
-T("scramble",     "Scramble",            "mma", "SETUP",  "GROUND", 4, 90, 90,  6, 2, { moves: "MID", prio: 2, flags: ["escape"] });
+T("scramble",     "Scramble",            "mma", "SETUP",  "GROUND", 4, 90, 90,  6, 2, { moves: "MID", prio: 2, flags: ["escape", "reset"] });
 T("wall_walk",    "Wall Walk",           "mma", "SETUP",  "GROUND", 4, 92, 84,  6, 3, { moves: "CLINCH", prio: 1, flags: ["escape"] });
 
 /* ---------------- Draka ---------------- */
 T("dr_throw",     "Draka Throw",         "draka", "THROW",  "CLINCH", 36, 82, 68, 10, 3, { moves: "GROUND" });
 T("dr_combo",     "Draka Combination",   "draka", "STRIKE", "MID",  30, 84, 78,  9, 2, { flags: ["multi"] });
-T("dr_takedown",  "Draka Takedown",      "draka", "THROW",  "MID",  30, 84, 72,  9, 2, { moves: "GROUND", flags: ["takedown"] });
+T("dr_takedown",  "Draka Takedown",      "draka", "THROW",  "MID",  30, 78, 72, 11, 2, { moves: "GROUND", flags: ["takedown"] });
 T("dr_ground",    "Ground Strike",       "draka", "STRIKE", "GROUND", 28, 88, 72,  8, 3, {});
 T("dr_break",     "Break Clinch",        "draka", "SETUP",  "CLINCH", 6, 92, 84,  5, 2, { moves: "MID", prio: 1, flags: ["reset"] });
 
 /* ---------------- universal basics every fighter knows ---------------- */
 T("basic_guard",  "Guard",               null, "GUARD",  "ANY",   0, 100, 82, 0, 1, { prio: 2, flags: ["block", "recover"] });
+T("basic_focus",  "Focus",               null, "SETUP",  "ANY",   0, 100, 75, 0, 1, { prio: 1, flags: ["focus"], isFocus: true });
 /* These two were inert for a long time: they had no `moves`, so "Close
    Distance" and "Create Space" cost stamina and did nothing. `shift` moves
    the fight one step along LONG-MID-CLINCH-GROUND relative to where it is,
    which is what a step in or a step out actually does. */
 T("basic_close",  "Close Distance",      null, "SETUP",  "ANY",   4, 94, 80,  5, 1, { shift: 1, flags: ["reposition"] });
 T("basic_break",  "Create Space",        null, "SETUP",  "ANY",   4, 94, 84,  5, 1, { prio: 1, shift: -1, flags: ["reposition"] });
-T("basic_stand",  "Stand Up",            null, "SETUP",  "GROUND", 4, 92, 84,  6, 1, { moves: "MID", prio: 1, flags: ["escape"] });
+T("basic_stand",  "Stand Up",            null, "SETUP",  "GROUND", 4, 92, 84,  6, 1, { moves: "MID", prio: 1, flags: ["escape", "reset"] });
 
 /* ---------------- ringcraft ----------------
    The ring itself as a weapon. Every professional knows these four - they
@@ -273,9 +274,9 @@ TECH.corner_work.sig = true;
    Single-discipline fighters were walking in with too few options, and a
    professional can throw a basic punch and defend a shot whatever their art.
    These fill out the thinner disciplines and widen the universal baseline. */
-T("arm_triangle",  "Arm Triangle",        "subgrap", "SUB",   "GROUND", 46, 78, 64, 11, 5, { eff: { st: "WINDED", ch: 58 }, flags: ["choke"] });
-T("ezekiel",       "Ezekiel Choke",       "subgrap", "SUB",   "GROUND", 40, 82, 68,  9, 4, { eff: { st: "WINDED", ch: 48 }, flags: ["choke"] });
-T("bow_and_arrow", "Bow and Arrow Choke", "subgrap", "SUB",   "GROUND", 52, 72, 60, 12, 7, { eff: { st: "WINDED", ch: 65 }, flags: ["choke", "finisher"] });
+T("arm_triangle",  "Arm Triangle",        "subgrap", "SUB",   "GROUND", 35, 74, 64, 11, 5, { eff: { st: "WINDED", ch: 58 }, flags: ["choke"] });
+T("ezekiel",       "Ezekiel Choke",       "subgrap", "SUB",   "GROUND", 31, 78, 68,  9, 4, { eff: { st: "WINDED", ch: 48 }, flags: ["choke"] });
+T("bow_and_arrow", "Bow and Arrow Choke", "subgrap", "SUB",   "GROUND", 40, 68, 60, 12, 7, { eff: { st: "WINDED", ch: 65 }, flags: ["choke", "finisher"] });
 T("crucifix",      "Crucifix",            "subgrap", "SETUP", "GROUND", 10, 90, 70,  6, 3, { eff: { st: "PINNED", ch: 58 }, flags: ["dominant"] });
 T("sg_pass",       "Guard Pass",          "subgrap", "SETUP", "GROUND",  8, 92, 74,  5, 2, { eff: { st: "OFF_BALANCE", ch: 45 } });
 T("sg_sweep",      "Butterfly Sweep",     "subgrap", "THROW", "GROUND", 24, 86, 76,  7, 2, { eff: { st: "OFF_BALANCE", ch: 50 }, flags: ["sweep"] });
@@ -288,8 +289,8 @@ T("dr_knee",       "Draka Knee",          "draka", "STRIKE", "CLINCH", 27, 88, 7
 T("dr_stance",     "Draka Stance",        "draka", "GUARD",  "ANY",     0, 100, 84, 0, 1, { prio: 2, flags: ["block"] });
 
 T("jj_atemi",      "Atemi",               "jiujitsu", "STRIKE", "MID", 22, 90, 82,  6, 1, { prio: 1 });
-T("jj_ude_garami", "Ude-Garami",          "jiujitsu", "SUB",   "GROUND", 40, 82, 68, 10, 4, { eff: { st: "ARM_HURT", ch: 55 } });
-T("jj_shime",      "Shime-Waza",          "jiujitsu", "SUB",   "GROUND", 44, 78, 66, 11, 5, { eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
+T("jj_ude_garami", "Ude-Garami",          "jiujitsu", "SUB",   "GROUND", 31, 78, 68, 10, 4, { eff: { st: "ARM_HURT", ch: 55 } });
+T("jj_shime",      "Shime-Waza",          "jiujitsu", "SUB",   "GROUND", 34, 74, 66, 11, 5, { eff: { st: "WINDED", ch: 55 }, flags: ["choke"] });
 
 T("lw_upper",      "Lethwei Uppercut",    "lethwei", "STRIKE", "MID", 30, 84, 74,  8, 3, {});
 T("lw_teep",       "Lethwei Teep",        "lethwei", "STRIKE", "LONG", 17, 94, 88,  5, 1, { prio: 1, moves: "LONG" });
@@ -305,8 +306,8 @@ T("basic_tieup",   "Tie Up",              null, "SETUP",  "MID",   4, 92, 78,  5
 T("basic_sprawl",  "Takedown Defence",    null, "GUARD",  "ANY",   0, 100, 94, 0, 1, { prio: 3, flags: ["anti-takedown", "fundamental"] });
 
 /* ==== imported from the training library - do not edit by hand, re-run tools/import-techniques.js ==== */
-T("strangle_hold_from_the_bac", "Strangle Hold from the Back", "jiujitsu", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "WINDED", ch: 62}, flags: ["elite", "choke"] });   // rear stranglehold applied after getting behind
-T("front_strangle_hold", "Front Strangle Hold", "jiujitsu", "SUB", "CLINCH", 32, 79, 70, 10, 6, { eff: {st: "WINDED", ch: 54}, flags: ["choke"] });   // two-handed front stranglehold at the collar
+T("strangle_hold_from_the_bac", "Strangle Hold from the Back", "jiujitsu", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "WINDED", ch: 62}, flags: ["elite", "choke"] });   // rear stranglehold applied after getting behind
+T("front_strangle_hold", "Front Strangle Hold", "jiujitsu", "SUB", "CLINCH", 27, 79, 70, 10, 6, { eff: {st: "WINDED", ch: 54}, flags: ["choke"] });   // two-handed front stranglehold at the collar
 T("closed_guard", "Closed Guard", "bjj", "SETUP", "GROUND", 4, 93, 86, 5, 2, { eff: {st: "HELD", ch: 28} });   // controls opponent between the legs from bottom
 T("open_guard", "Open Guard", "bjj", "SETUP", "GROUND", 4, 93, 86, 5, 2, {});   // long-range guard with feet on hips or biceps
 T("butterfly_guard", "Butterfly Guard", "bjj", "SETUP", "GROUND", 4, 93, 86, 5, 2, {});   // seated guard with instep hooks inside the thighs
@@ -314,15 +315,15 @@ T("half_guard", "Half Guard", "bjj", "SETUP", "GROUND", 4, 93, 86, 5, 2, { eff: 
 T("knee_mount", "Knee Mount", "bjj", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "HELD", ch: 32} });   // drives knee onto belly for crushing control
 T("rear_mount", "Rear Mount", "bjj", "SETUP", "GROUND", 8, 86, 78, 8, 4, { eff: {st: "HELD", ch: 36} });   // back control with both hooks sunk in
 T("north_south_position", "North-South Position", "bjj", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "HELD", ch: 32} });   // head-to-head control over the shoulders
-T("spinning_armbar", "Spinning Armbar", "bjj", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "LEG_HURT", ch: 62}, flags: ["spin", "elite"] });   // spins over the trapped arm from knee mount
-T("helicopter_armbar", "Helicopter Armbar", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58}, flags: ["launcher"] });   // flips a lifting opponent overhead into an armbar
-T("cross_collar_choke", "Cross Collar Choke", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "WINDED", ch: 58}, flags: ["choke"] });   // deep lapel grips strangle from guard or mount
-T("sliding_collar_choke", "Sliding Collar Choke", "bjj", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "WINDED", ch: 62}, flags: ["elite", "choke"] });   // collar strangle slid in from rear mount
-T("sleeve_choke", "Sleeve Choke", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "WINDED", ch: 58}, flags: ["choke"] });   // forearm-and-sleeve strangle across the throat
-T("clock_choke", "Clock Choke", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "WINDED", ch: 58}, flags: ["choke"] });   // collar choke walking around a turtled opponent
-T("achilles_lock", "Achilles Lock", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "LEG_HURT", ch: 58} });   // forearm crushes the Achilles to hyperextend the ankle
-T("rolling_kneebar", "Rolling Kneebar", "bjj", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "LEG_HURT", ch: 62}, flags: ["elite"] });   // rolls over a turtled opponent into a kneebar
-T("toehold", "Toehold", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "LEG_HURT", ch: 58} });   // figure-four foot twist attacking ankle and knee
+T("spinning_armbar", "Spinning Armbar", "bjj", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "LEG_HURT", ch: 62}, flags: ["spin", "elite"] });   // spins over the trapped arm from knee mount
+T("helicopter_armbar", "Helicopter Armbar", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58}, flags: ["launcher"] });   // flips a lifting opponent overhead into an armbar
+T("cross_collar_choke", "Cross Collar Choke", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "WINDED", ch: 58}, flags: ["choke"] });   // deep lapel grips strangle from guard or mount
+T("sliding_collar_choke", "Sliding Collar Choke", "bjj", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "WINDED", ch: 62}, flags: ["elite", "choke"] });   // collar strangle slid in from rear mount
+T("sleeve_choke", "Sleeve Choke", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "WINDED", ch: 58}, flags: ["choke"] });   // forearm-and-sleeve strangle across the throat
+T("clock_choke", "Clock Choke", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "WINDED", ch: 58}, flags: ["choke"] });   // collar choke walking around a turtled opponent
+T("achilles_lock", "Achilles Lock", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "LEG_HURT", ch: 58} });   // forearm crushes the Achilles to hyperextend the ankle
+T("rolling_kneebar", "Rolling Kneebar", "bjj", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "LEG_HURT", ch: 62}, flags: ["elite"] });   // rolls over a turtled opponent into a kneebar
+T("toehold", "Toehold", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "LEG_HURT", ch: 58} });   // figure-four foot twist attacking ankle and knee
 T("knee_slide_pass", "Knee Slide Pass", "bjj", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "BLEEDING", ch: 32} });   // cuts the knee across the thigh to pass guard
 T("matador_pass", "Matador Pass", "bjj", "SETUP", "GROUND", 6, 90, 82, 7, 3, {});   // throws the legs aside and steps to knee mount
 T("standing_guard_pass", "Standing Guard Pass", "bjj", "SETUP", "GROUND", 6, 90, 82, 7, 3, { moves: "MID" });   // stands up to open and pass the closed guard
@@ -351,7 +352,7 @@ T("standing_crotch_and_half_n", "Standing Crotch and Half Nelson", "wrestling", 
 T("half_nelson", "Half Nelson", "wrestling", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "PINNED", ch: 32} });   // arm under armpit levers opponent flat for the pin
 T("quarter_nelson", "Quarter Nelson", "wrestling", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "PINNED", ch: 32} });   // head-pressing nelson turns opponent onto the back
 T("hammerlock", "Hammerlock", "wrestling", "SUB", "GROUND", 28, 83, 74, 9, 5, { eff: {st: "ARM_HURT", ch: 50} });   // wrenches the arm up behind the back
-T("double_wrist_lock", "Double Wrist Lock", "wrestling", "SUB", "GROUND", 36, 76, 66, 11, 7, { moves: "MID", eff: {st: "ARM_HURT", ch: 58} });   // figure-four wrist lock, standing or on the mat
+T("double_wrist_lock", "Double Wrist Lock", "wrestling", "SUB", "GROUND", 27, 72, 66, 11, 7, { moves: "MID", eff: {st: "ARM_HURT", ch: 58} });   // figure-four wrist lock, standing or on the mat
 T("body_scissors", "Body Scissors", "wrestling", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "PINNED", ch: 32} });   // legs squeeze the torso to ride and wear down
 T("cradle_hold", "Cradle Hold", "wrestling", "SETUP", "GROUND", 8, 86, 78, 8, 4, { eff: {st: "PINNED", ch: 36} });   // links head and knee to pin shoulders to the mat
 T("inside_grapevine", "Inside Grapevine", "wrestling", "SETUP", "GROUND", 6, 90, 82, 7, 3, { eff: {st: "PINNED", ch: 32} });   // leg-laces from top to flatten and stretch opponent
@@ -369,11 +370,11 @@ T("flying_scissors", "Flying Scissors", "sambo", "THROW", "MID", 28, 83, 74, 9, 
 T("grapevine_throw", "Grapevine Throw", "sambo", "THROW", "CLINCH", 28, 83, 74, 9, 5, { moves: "GROUND" });   // winds a leg around the opponent's leg and throws
 T("snap_down_sambo", "Snap-Down", "sambo", "THROW", "MID", 20, 90, 82, 7, 3, { eff: {st: "OFF_BALANCE", ch: 37} });   // jerks opponent down past the point of balance
 T("mount_with_leg_hooks", "Mount with Leg Hooks", "sambo", "SETUP", "GROUND", 8, 86, 78, 8, 4, {});   // top retention with feet grapevined in the legs
-T("elbow_lever_over_thigh", "Elbow Lever over Thigh", "sambo", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "LEG_HURT", ch: 58} });   // straightens the arm across the thigh from side hold
-T("cross_body_elbow_lever", "Cross-Body Elbow Lever", "sambo", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "LEG_HURT", ch: 62}, flags: ["elite"] });   // legs over chest, arm between thighs, straight armbar
-T("hip_lever", "Hip Lever", "sambo", "SUB", "GROUND", 32, 79, 70, 10, 6, { eff: {st: "LEG_HURT", ch: 54} });   // shin seized under arm, foot braced, separates the thighs
-T("foot_knot_keylock", "Foot Knot Keylock", "sambo", "SUB", "GROUND", 32, 79, 70, 10, 6, { eff: {st: "ARM_HURT", ch: 54} });   // shin pins the forearm to twist the shoulder
-T("achilles_tendon_jam", "Achilles Tendon Jam", "sambo", "SUB", "GROUND", 36, 76, 66, 11, 7, { prio: 1, eff: {st: "LEG_HURT", ch: 58} });   // bodyweight jams forearm into the Achilles for the tap
+T("elbow_lever_over_thigh", "Elbow Lever over Thigh", "sambo", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "LEG_HURT", ch: 58} });   // straightens the arm across the thigh from side hold
+T("cross_body_elbow_lever", "Cross-Body Elbow Lever", "sambo", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "LEG_HURT", ch: 62}, flags: ["elite"] });   // legs over chest, arm between thighs, straight armbar
+T("hip_lever", "Hip Lever", "sambo", "SUB", "GROUND", 27, 79, 70, 10, 6, { eff: {st: "LEG_HURT", ch: 54} });   // shin seized under arm, foot braced, separates the thighs
+T("foot_knot_keylock", "Foot Knot Keylock", "sambo", "SUB", "GROUND", 27, 79, 70, 10, 6, { eff: {st: "ARM_HURT", ch: 54} });   // shin pins the forearm to twist the shoulder
+T("achilles_tendon_jam", "Achilles Tendon Jam", "sambo", "SUB", "GROUND", 27, 72, 66, 11, 7, { prio: 1, eff: {st: "LEG_HURT", ch: 58} });   // bodyweight jams forearm into the Achilles for the tap
 T("neck_lever_turnover", "Neck Lever Turnover", "sambo", "SETUP", "GROUND", 4, 93, 86, 5, 2, {});   // levers head and arm to flip a turtled opponent
 T("arm_and_leg_turnover", "Arm-and-Leg Turnover", "sambo", "SETUP", "GROUND", 4, 93, 86, 5, 2, {});   // grabs far arm and leg to roll opponent to the back
 T("side_hold_sit_up_escape", "Side Hold Sit-Up Escape", "sambo", "GUARD", "GROUND", 0, 100, 86, 0, 2, { prio: 2 });   // swings legs and sits up sharply to reverse the side hold
@@ -386,7 +387,7 @@ T("check_to_overhand", "Check to Overhand", "mma", "STRIKE", "MID", 32, 79, 70, 
 T("push_away_to_knee", "Push Away to Knee", "mma", "STRIKE", "MID", 32, 79, 70, 10, 6, { eff: {st: "STUNNED", ch: 24} });   // stiff-arm the shot and drive a knee into the ducking head
 T("high_knees_from_sprawl", "High Knees from Sprawl", "mma", "STRIKE", "CLINCH", 32, 79, 70, 10, 6, { prio: 3, eff: {st: "STUNNED", ch: 24} });   // hold the sprawled head down and feed knees to it
 T("sprawl_to_side_control", "Sprawl to Side Control", "wrestling", "SETUP", "GROUND", 8, 86, 78, 8, 4, { eff: {st: "PINNED", ch: 36} });   // ride the flattened shot around to dominant side control
-T("hand_clasp_guillotine", "Hand-Clasp Guillotine", "bjj", "SUB", "CLINCH", 40, 72, 62, 13, 8, { eff: {st: "WINDED", ch: 62}, flags: ["elite"] });   // snap the neck under the arm as his shot comes in
+T("hand_clasp_guillotine", "Hand-Clasp Guillotine", "bjj", "SUB", "CLINCH", 31, 68, 62, 13, 8, { eff: {st: "WINDED", ch: 62}, flags: ["elite"] });   // snap the neck under the arm as his shot comes in
 T("body_lock_takedown", "Body-Lock Takedown", "wrestling", "THROW", "CLINCH", 28, 83, 74, 9, 5, { moves: "GROUND" });   // locked waist and hip pressure put him on the mat
 T("catch_knee_to_takedown", "Catch Knee to Takedown", "mma", "THROW", "CLINCH", 28, 83, 74, 9, 5, { moves: "GROUND", eff: {st: "OFF_BALANCE", ch: 45} });   // caught clinch knee becomes an instant dump
 T("whizzer_hip_toss", "Whizzer Hip Toss", "wrestling", "THROW", "CLINCH", 32, 79, 70, 10, 6, { moves: "GROUND" });   // whizzer throw lands you on top ready to punch
@@ -409,16 +410,16 @@ T("body_body_head", "Body-Body-Head", "mma", "STRIKE", "GROUND", 32, 79, 70, 10,
 T("over_the_top_elbow", "Over the Top Elbow", "mma", "STRIKE", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "BLEEDING", ch: 48} });   // elbow arcs over the guard player's frames to cut him open
 T("grinding_elbow", "Grinding Elbow", "mma", "STRIKE", "GROUND", 28, 83, 74, 9, 5, {});   // grinding elbow pressure softens the half guard from top
 T("no_hand_pass", "No Hand Pass", "bjj", "SETUP", "GROUND", 8, 86, 78, 8, 4, { eff: {st: "PINNED", ch: 36} });   // posture-and-knee slide passes half guard without gripping
-T("striking_to_arm_bar", "Striking to Arm Bar", "mma", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "ARM_HURT", ch: 62}, flags: ["elite"] });   // mounted punches make him reach, arm bar the extended arm
-T("striking_to_americana", "Striking to Americana", "mma", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58} });   // blocked ground strike gets bent into an americana
-T("kata_gatame_arm_triangle", "Kata-Gatame Arm Triangle", "bjj", "SUB", "GROUND", 40, 72, 62, 13, 8, { moves: "LONG", eff: {st: "WINDED", ch: 62}, flags: ["elite", "choke"] });   // pushed-across arm becomes a mounted arm-triangle choke
+T("striking_to_arm_bar", "Striking to Arm Bar", "mma", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "ARM_HURT", ch: 62}, flags: ["elite"] });   // mounted punches make him reach, arm bar the extended arm
+T("striking_to_americana", "Striking to Americana", "mma", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58} });   // blocked ground strike gets bent into an americana
+T("kata_gatame_arm_triangle", "Kata-Gatame Arm Triangle", "bjj", "SUB", "GROUND", 31, 68, 62, 13, 8, { moves: "LONG", eff: {st: "WINDED", ch: 62}, flags: ["elite", "choke"] });   // pushed-across arm becomes a mounted arm-triangle choke
 T("double_attack_mount", "Double Attack Mount", "mma", "SETUP", "GROUND", 12, 79, 70, 10, 6, { eff: {st: "WINDED", ch: 54}, flags: ["choke"] });   // high mount threatening strikes, back take, and choke at once
-T("knee_punch_arm_bar", "Knee Punch Arm Bar", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58} });   // trap the punching arm from guard and swing into an arm bar
-T("arm_trap_triangle", "Arm Trap Triangle", "bjj", "SUB", "GROUND", 40, 72, 62, 13, 8, { eff: {st: "ARM_HURT", ch: 62}, flags: ["elite"] });   // blocked ground-and-pound arm gets triangled from guard
-T("posture_up_guillotine", "Posture Up Guillotine", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, {});   // sit-up guard snatches the neck as he postures to punch
-T("sit_up_kimura", "Sit-Up Kimura", "bjj", "SUB", "GROUND", 36, 76, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58} });   // sit up to the wrist and crank the shoulder
+T("knee_punch_arm_bar", "Knee Punch Arm Bar", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58} });   // trap the punching arm from guard and swing into an arm bar
+T("arm_trap_triangle", "Arm Trap Triangle", "bjj", "SUB", "GROUND", 31, 68, 62, 13, 8, { eff: {st: "ARM_HURT", ch: 62}, flags: ["elite"] });   // blocked ground-and-pound arm gets triangled from guard
+T("posture_up_guillotine", "Posture Up Guillotine", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, {});   // sit-up guard snatches the neck as he postures to punch
+T("sit_up_kimura", "Sit-Up Kimura", "bjj", "SUB", "GROUND", 27, 72, 66, 11, 7, { eff: {st: "ARM_HURT", ch: 58} });   // sit up to the wrist and crank the shoulder
 T("turtle_to_back", "Turtle to Back", "bjj", "SETUP", "GROUND", 12, 79, 70, 10, 6, { eff: {st: "PINNED", ch: 44} });   // hooks in on the turtled opponent and flatten him out
-T("kick_out_to_standing", "Kick Out to Standing", "mma", "GUARD", "GROUND", 0, 100, 82, 0, 3, { prio: 2, moves: "LONG" });   // kick the top man away and scramble back to the feet
+T("kick_out_to_standing", "Kick Out to Standing", "mma", "GUARD", "GROUND", 0, 100, 82, 0, 3, { prio: 2, moves: "LONG", flags: ["escape", "reset"] });   // kick the top man away and scramble back to the feet
 T("choke_defense", "Choke Defense", "bjj", "GUARD", "GROUND", 0, 100, 82, 0, 3, { prio: 2, eff: {st: "WINDED", ch: 42}, flags: ["choke"] });   // chin tuck and hand fighting stall the choke from back control
 T("bridge_escape", "Bridge Escape", "bjj", "GUARD", "GROUND", 0, 100, 82, 0, 3, { prio: 2, flags: ["escape"] });   // bridge and roll reverses the mounted position
 T("yaeb", "Yaeb (Jab)", "muaythai", "STRIKE", "MID", 16, 93, 86, 5, 2, { prio: 1 });   // range-finding lead punch that opens combinations
@@ -541,5 +542,34 @@ T("hung_gar_tiger_claw", "Hung Gar Tiger Claw", "wushu", "STRIKE", "MID", 28, 83
 T("hung_gar_attacking_block", "Hung Gar Attacking Block", "wushu", "GUARD", "MID", 0, 100, 78, 0, 4, { prio: 2 });   // block delivered hard enough to injure the punching arm
 T("baguazhang_circle_walking", "Baguazhang Circle Walking", "wushu", "SETUP", "MID", 6, 90, 82, 7, 3, {});   // circling footwork with eight palm changes concealing throws
 /* ==== end imported ==== */
+
+/* ---------------------------------------------------------------------
+   Grappling is paid for in position, not in impact.
+
+   The dex as written had THROW at mean power 29.6 and SUB at 31.0 against
+   STRIKE's 30.0. A throw did a punch's damage AND moved the fight to a
+   range its thrower chose AND handed him control there; a submission did a
+   punch's damage AND started a three-stage ladder that ends in a tap. Both
+   were strictly better than the strike they were priced against, and the
+   audit agreed: THROW was 32% of every action taken and 28% of every
+   finish, submissions another 40%, GROUND ate 44% of all turns, and strikes
+   ended only 31% of fights against a 40% target.
+
+   Neither class loses anything it is for. A throw is still the only way to
+   choose the range; the submission ladder, the stamina drain and the
+   blocked strike class are all untouched. They just stop also being the
+   best damage in the game. Applied as one pass each rather than 127
+   hand-edited rows, so the reason lives beside the number and the imported
+   block above the do-not-edit line stays clean.
+   Re-measure with tools/audit-balance.js after touching either.
+   --------------------------------------------------------------------- */
+const THROW_IMPACT = 0.79;
+const SUB_IMPACT = 0.90;
+Object.keys(TECH).forEach((id) => {
+  const t = TECH[id];
+  if (!t.power) return;
+  if (t.cls === "THROW") t.power = Math.max(8, Math.round(t.power * THROW_IMPACT));
+  else if (t.cls === "SUB") t.power = Math.max(8, Math.round(t.power * SUB_IMPACT));
+});
 
 const TECH_IDS = Object.keys(TECH);

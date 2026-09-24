@@ -12,9 +12,10 @@ module.exports = function (h) {
   const toMenu = () => { A.G.scene = A.S.TITLE; frames(1); press("a"); };
   const menuPick = (key) => {
     toMenu();
-    const i = A.menuItems().findIndex((it) => it[2] === key);
-    if (i < 0) throw new Error("no menu item " + key);
-    A.G.menuSel = i; press("a");
+    /* the menu is grouped into tabs, so a row is addressed by its key and the
+       cursor lands on whichever tab holds it */
+    if (!A.menuGoTo(key)) throw new Error("no menu item " + key);
+    press("a");
   };
 
   section("boot and roster");
@@ -86,7 +87,7 @@ module.exports = function (h) {
     ok(parsed.v === 4 && parsed.run.adv.stage === 4, "versioned, and the run carries", parsed.v);
     A.exec("G.adv=null; SAVE=load(); resumeRun();");
     ok(A.G.adv && A.G.adv.stage === 4 && A.G.scene === A.S.MAP, "a reload resumes the run");
-    ok(A.menuItems()[0][2] === "cont", "CONTINUE RUN heads the menu");
+    ok(A.menuTabItems(0)[0][2] === "cont", "CONTINUE RUN heads the FIGHT tab");
   }
   {
     A.localStore.delete("azha_save");
@@ -125,10 +126,20 @@ module.exports = function (h) {
   }
   {
     A.exec("SAVE=DEF_SAVE(); G.adv=null; G.surv=null; G.duel=null;");
-    menuPick("surv"); press("a");
-    ok(scene() === "DUEL" && A.G.duel.survival, "survival starts");
+    /* the gauntlet row used to carry the key "surv" and start the stripped
+       survival loop while advertising the endless one; it now reaches the mode
+       its own blurb describes. The mode itself is shelved off the default
+       menu (plan item C3): the flag is a build-time var, but the harness runs
+       the real page, so the launch is reached the way a flag build reaches it,
+       by flipping the gate before menuPick and restoring it after. */
+    A.exec("AZHA_SHELVED_MODES = true;");
+    menuPick("endless"); press("a");
+    A.exec("AZHA_SHELVED_MODES = false;");
+    ok(scene() === "DUEL" && A.G.duel.endless, "the gauntlet starts", scene());
+    ok(!!A.G.endless && A.G.endless.wave >= 1, "with a gauntlet run behind it");
     let g = 0; while (A.G.scene === A.S.DUEL && g < 40000) { A.onKey("a"); A.step(); A.render(); g++; }
-    ok(["survwin", "survend"].includes(A.G.result.kind), "survival resolves", A.G.result.kind);
+    ok(["endlesswin", "endlessloss", "gauntletvictory"].includes(A.G.result.kind),
+      "the gauntlet resolves", A.G.result.kind);
   }
   {
     A.exec("G.vsHotseat=true; G.vsP1=0; G.selMode='vs2'; G.scene=S.SELECT; G.sel=1;");

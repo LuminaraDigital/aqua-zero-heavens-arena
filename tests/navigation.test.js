@@ -153,4 +153,67 @@ module.exports = function (h) {
     ok(A.exec("hintFor()").b === "TITLE", "the label follows the scene");
     ok(A.exec("typeof syncHint") === "function", "and the pad is synced every frame");
   }
+
+  section("legends are read off the binding table");
+  {
+    const K = A.Keybindings;
+    ok(A.exec("KMAP===Keybindings.ARENA_KEYS"), "the page's key map IS the module's table, not a copy");
+    /* the bug: fighter select promised A - CONFIRM while the a key moved the cursor */
+    ok(K.arenaAction("a", "SELECT") === "left", "the a key is a cursor key", K.arenaAction("a", "SELECT"));
+    ok(K.arenaAction("z", "SELECT") === "a" && K.arenaAction("Enter", "SELECT") === "a" && K.arenaAction(" ", "SELECT") === "a",
+       "Z, Enter and Space are what confirm");
+    ok(K.legendFor("a", "CONFIRM", "SELECT") === "A / Z - CONFIRM",
+       "so the legend says which key that is", K.legendFor("a", "CONFIRM", "SELECT"));
+    /* every key a legend names must resolve to the action it is a legend
+       for, on the scene it is printed on - the check that fails if a string
+       and the table ever part ways again */
+    const scenes = ["TITLE", "MENU", "SELECT", "MAP", "BRIEF", "DUEL", "RESULT", "OPTIONS", "HOW", ""];
+    const raw = { SPACE: " ", ENTER: "Enter", ESC: "Escape", BKSP: "Backspace" };
+    const bad = [];
+    scenes.forEach((sc) => ["a", "b", "y", "diff", "rand", "code"].forEach((act) => {
+      const keys = K.arenaKeysFor(act, sc);
+      /* the face buttons always have a key; difficulty, random and code
+         are only offered on some scenes and must name nothing elsewhere */
+      if (!keys.length && (act === "a" || act === "b" || act === "y")) bad.push(sc + ":" + act + ":no key");
+      keys.forEach((label) => {
+        const key = raw[label] || label.toLowerCase();
+        if (K.arenaAction(key, sc) !== act) bad.push(sc + ":" + act + ":" + label);
+      });
+      if (keys.length && K.legendFor(act, "VERB", sc).indexOf(keys[0]) < 0) bad.push(sc + ":" + act + ":legend");
+      if (!keys.length && K.legendFor(act, "VERB", sc) !== "VERB") bad.push(sc + ":" + act + ":phantom key");
+    }));
+    ok(bad.length === 0, "every key a legend names does what the legend says, on that scene", bad.join(",") || "clean");
+    ok(K.legendFor("b", "BACK", "SELECT") === "B / ESC - BACK",
+       "on select X cycles difficulty, so B's key is ESC there", K.legendFor("b", "BACK", "SELECT"));
+    ok(K.legendFor("diff", "DIFFICULTY", "SELECT") === "X - DIFFICULTY",
+       "and the difficulty legend names only X there", K.legendFor("diff", "DIFFICULTY", "SELECT"));
+    ok(K.legendFor("diff", "DIFFICULTY", "TITLE") === "X / D - DIFFICULTY",
+       "while the title takes X or D", K.legendFor("diff", "DIFFICULTY", "TITLE"));
+    ok(K.legendFor("b", "BACK", "DUEL") === "B / X - BACK", "and in a fight X is back again", K.legendFor("b", "BACK", "DUEL"));
+    ok(K.legendFor("y", "DOSSIER", "SELECT") === "Y / C - DOSSIER", "Y is C on the keyboard", K.legendFor("y", "DOSSIER", "SELECT"));
+    /* the page helpers read the live scene */
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0;");
+    ok(A.exec('LG("a","CONFIRM")') === K.legendFor("a", "CONFIRM", "SELECT"), "LG() on select is the select legend");
+    ok(A.exec('KH("a")') === "A / Z", "and KH() is the key head for a PRESS prompt", A.exec('KH("a")'));
+    ok(A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))') === "A / Z - CONFIRM   \u00B7   B / ESC - BACK",
+       "LGJ() joins with the footer's dot and drops blanks", A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))'));
+    /* and the keys do what the footer now says: a moves, Z confirms */
+    frames(1);
+    const sel0 = A.G.sel;
+    press(K.arenaAction("a", "SELECT"));
+    ok(scene() === "SELECT" && A.G.sel !== sel0, "pressing the a key moves the cursor", scene() + " sel " + A.G.sel);
+    press(K.arenaAction("z", "SELECT"));
+    ok(scene() === "MAP", "pressing Z confirms the fighter", scene());
+    /* the on-screen pad's key captions come from the same table */
+    A.exec("G.scene=S.SELECT;");
+    ok(K.arenaKeysFor("a", "SELECT")[0] === "Z" && K.arenaKeysFor("b", "SELECT")[0] === "ESC", "the pad captions would read Z and ESC on select");
+    /* the controls page prints the derived strings, not hand-written ones */
+    const how = A.exec("JSON.stringify(HOW_TOPICS)");
+    ok(how.indexOf(K.legendFor("a", "CONFIRM")) >= 0, "the controls page prints the derived confirm legend");
+    ok(how.indexOf("A (Z)") < 0 && how.indexOf("C / Y  -") < 0, "and none of the old hand-written ones");
+    /* on a pad the keyboard half is dropped */
+    K.setInputDevice("gamepad");
+    ok(K.legendFor("a", "CONFIRM", "SELECT") === "(A) - CONFIRM", "a pad legend is the pad glyph", K.legendFor("a", "CONFIRM", "SELECT"));
+    K.setInputDevice("keyboard");
+  }
 };

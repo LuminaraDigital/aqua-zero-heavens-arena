@@ -54,7 +54,10 @@ function masteryToNext(xp) {
 /* returns {gained, from, to, levelled} */
 function awardMastery(save, fid, result) {
   if (!save.mastery) save.mastery = {};
-  const before = masteryXp(save, fid), gained = masteryFor(result);
+  const before = masteryXp(save, fid);
+  const gained = (typeof masteryForWithArc === "function")
+    ? masteryForWithArc(result, save, fid)
+    : masteryFor(result);
   const after = before + gained;
   save.mastery[fid] = after;
   const from = masteryRank(before), to = masteryRank(after);

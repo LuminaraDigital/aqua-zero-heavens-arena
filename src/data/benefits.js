@@ -106,6 +106,8 @@ B("edge_glass", "Glass Cannon", "half again on everything you throw - and a quar
   { dmgOut: (n) => Math.round(n * 1.5), dmgIn: (n) => Math.round(n * 1.25) });
 B("edge_promoter", "The Promoter's Cut", "every purse this run pays double", "EDGE",
   { purseMul: 2 });
+B("ladder_favor", "Ladder Favor", "+25% promotion points from adventure fights this run", "TACTICAL",
+  { promoMul: 1.25 });
 
 const BENEFIT_IDS = Object.keys(BENEFITS);
 

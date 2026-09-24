@@ -72,7 +72,16 @@ function evaluateStyleEvent(state, event, side, duel) {
 
   if (event.hit) {
     pts += STYLE_TRIGGERS.HIT_BASE;
-    if (event.dmg >= 35) {
+    /* against the bar the damage landed on, not a flat number. `>= 35`
+       was written when TECH_DMG_SCALE was 0.42 and fired on 0.00% of
+       1,473 landed techniques at 0.37 - HEAVY IMPACT was dead content.
+       The share is the one the reaction animation already uses for a
+       stagger, so the meter cheers the shot the screen reacts to. */
+    const target = (duel && duel.p && duel.e) ? (duel.p === side ? duel.e : duel.p) : side;
+    const share = typeof dmgShare === "function" ? dmgShare(target, event.dmg)
+      : (event.dmg || 0) / (((target && target.maxhp) || 100));
+    const heavy = typeof STAGGER_SHARE === "number" ? STAGGER_SHARE : 0.26;
+    if (share >= heavy) {
       pts += 100;
       evList.push("HEAVY IMPACT");
     }

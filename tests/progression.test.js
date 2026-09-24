@@ -23,7 +23,7 @@ module.exports = function (h) {
       if (!b.name || !b.desc) bad.push(id + ":copy");
       const hooks = ["side", "dmgOut", "dmgIn", "turnEnd", "onPick", "onStatus", "accOut"];
       if (!hooks.some((k) => b[k]) && !b.guardAll && !b.perfectFocus && !b.stageHeal &&
-          !b.freeRead && !b.levelBonus && !b.chainPlus && !b.purseMul) bad.push(id + ":inert");
+          !b.freeRead && !b.levelBonus && !b.chainPlus && !b.purseMul && !b.promoMul) bad.push(id + ":inert");
     });
     ok(bad.length === 0, "every benefit actually does something", bad.join(",") || "all live");
   }
