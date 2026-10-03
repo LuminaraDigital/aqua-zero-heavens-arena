@@ -162,8 +162,8 @@ module.exports = function (h) {
     ok(K.arenaAction("a", "SELECT") === "left", "the a key is a cursor key", K.arenaAction("a", "SELECT"));
     ok(K.arenaAction("z", "SELECT") === "a" && K.arenaAction("Enter", "SELECT") === "a" && K.arenaAction(" ", "SELECT") === "a",
        "Z, Enter and Space are what confirm");
-    ok(K.legendFor("a", "CONFIRM", "SELECT") === "A / Z - CONFIRM",
-       "so the legend says which key that is", K.legendFor("a", "CONFIRM", "SELECT"));
+    ok(K.legendFor("a", "CONFIRM", "SELECT") === "Z / ENTER - CONFIRM",
+       "so the legend names the keys that confirm, and not the A key that moves", K.legendFor("a", "CONFIRM", "SELECT"));
     /* every key a legend names must resolve to the action it is a legend
        for, on the scene it is printed on - the check that fails if a string
        and the table ever part ways again */
@@ -194,8 +194,8 @@ module.exports = function (h) {
     /* the page helpers read the live scene */
     A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0;");
     ok(A.exec('LG("a","CONFIRM")') === K.legendFor("a", "CONFIRM", "SELECT"), "LG() on select is the select legend");
-    ok(A.exec('KH("a")') === "A / Z", "and KH() is the key head for a PRESS prompt", A.exec('KH("a")'));
-    ok(A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))') === "A / Z - CONFIRM   \u00B7   B / ESC - BACK",
+    ok(A.exec('KH("a")') === "Z / ENTER", "and KH() is the key head for a PRESS prompt", A.exec('KH("a")'));
+    ok(A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))') === "Z / ENTER - CONFIRM   \u00B7   B / ESC - BACK",
        "LGJ() joins with the footer's dot and drops blanks", A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))'));
     /* and the keys do what the footer now says: a moves, Z confirms */
     frames(1);
@@ -206,7 +206,9 @@ module.exports = function (h) {
     ok(scene() === "MAP", "pressing Z confirms the fighter", scene());
     /* the on-screen pad's key captions come from the same table */
     A.exec("G.scene=S.SELECT;");
-    ok(K.arenaKeysFor("a", "SELECT")[0] === "Z" && K.arenaKeysFor("b", "SELECT")[0] === "ESC", "the pad captions would read Z and ESC on select");
+    ok(K.arenaKeysFor("a", "SELECT")[0] === "Z" && K.arenaKeysFor("b", "SELECT")[0] === "B",
+       "the pad captions read Z and B on select", K.arenaKeysFor("b", "SELECT").join(","));
+    ok(K.arenaKeysFor("b", "SELECT").indexOf("ESC") >= 0, "and ESC still goes back there");
     /* the controls page prints the derived strings, not hand-written ones */
     const how = A.exec("JSON.stringify(HOW_TOPICS)");
     ok(how.indexOf(K.legendFor("a", "CONFIRM")) >= 0, "the controls page prints the derived confirm legend");

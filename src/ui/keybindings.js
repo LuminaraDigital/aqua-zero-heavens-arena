@@ -91,10 +91,11 @@ window.Keybindings = (function() {
     /* THE ARENA TABLE. This is the object the page's keydown handler is
        assigned from (KMAP = Keybindings.ARENA_KEYS), so a legend built by
        legendFor() is read off the very rows a keypress is resolved through
-       and the two cannot drift. They had: fighter select advertised
-       "A - CONFIRM" while the a key sat in this table as `left`, so pressing
-       it moved the cursor to the next fighter. Z, Enter and Space are what
-       confirm; the pad glyph is the same "A" the on-screen pad shows.
+       and the two cannot drift. A legend names keyboard keys that perform
+       the action. It does not borrow a pad glyph for a letter that does
+       something else: on fighter select the A key is still left, so the
+       confirm legend says Z / ENTER, and on the title the A key confirms,
+       so that screen can honestly say A / Z.
 
        The combat/menu tables above are the remappable set the settings
        drawer edits. This one is positional - the page dispatches on the
@@ -103,17 +104,18 @@ window.Keybindings = (function() {
         ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
         w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right",
         z: "a", Z: "a", Enter: "a", " ": "a",
-        x: "b", X: "b", Escape: "b", Backspace: "b",
-        c: "y", C: "y", i: "y", I: "y",
+        b: "b", B: "b", x: "b", X: "b", Escape: "b", Backspace: "b",
+        y: "y", Y: "y", c: "y", C: "y", i: "y", I: "y",
         r: "rand", R: "rand",
         o: "code", O: "code",
         "1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7", "8": "8"
     };
-    /* scene overrides, consulted BEFORE the table: on these scenes these
-       keys change the difficulty instead of what the table says. Kept here
-       rather than in the handler so a legend on SELECT knows X is no longer
-       "back" there and says ESC instead. */
+    /* scene overrides, consulted BEFORE the table. The title prints
+       "A / Z" as start, so A confirms there even though it is left
+       everywhere else. X / D cycle difficulty on the screens that say so,
+       which is why a back legend on those screens names ESC instead. */
     var ARENA_OVERRIDES = [
+        { action: "a", keys: ["a", "A"], scenes: ["TITLE"] },
         { action: "diff", keys: ["x", "X", "d", "D"], scenes: ["TITLE", "BRIEF", "OPTIONS"] },
         { action: "diff", keys: ["x", "X"], scenes: ["MENU", "SELECT"] }
     ];
@@ -159,10 +161,11 @@ window.Keybindings = (function() {
         }
         return out;
     }
-    /* "A / Z - CONFIRM": the pad glyph, the primary keyboard key that does
-       the same thing on this scene, then the verb. On a pad or a touch
-       screen the keyboard half is dropped because it is not what the
-       player is holding. */
+    /* "Z / ENTER - CONFIRM": the first two keyboard keys that actually
+       perform the action on this scene, then the verb. A letter is only
+       printed when pressing that letter does the action. On a pad or a
+       touch screen the keyboard half is dropped because it is not what
+       the player is holding. */
     function legendFor(action, verb, sceneName) {
         var v = String(verb || "").toUpperCase();
         var glyph = PAD_GLYPH[action] || "";
@@ -172,9 +175,7 @@ window.Keybindings = (function() {
             return (g ? g + " - " : "") + v;
         }
         var keys = arenaKeysFor(action, sceneName);
-        var head;
-        if (glyph) head = keys.length && keys[0] !== glyph ? glyph + " / " + keys[0] : glyph;
-        else head = keys.slice(0, 2).join(" / ");
+        var head = keys.slice(0, 2).join(" / ");
         if (!v) return head;
         return (head ? head + " - " : "") + v;
     }

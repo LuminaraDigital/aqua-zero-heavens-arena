@@ -20,6 +20,7 @@ const SUITES = {
   security: "./security.test",
   library: "./library.test",
   navigation: "./navigation.test",
+  playthrough: "./playthrough.test",
   progression: "./progression.test",
   systems: "./systems.test",
   tell: "./tell.test",

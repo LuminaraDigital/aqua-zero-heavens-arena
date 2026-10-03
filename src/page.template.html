@@ -698,6 +698,20 @@ __MODULES__
    ================================================================ */
 const F_GUARD=0x01,F_EVADE=0x02,F_PARRY=0x04,F_LOW=0x08,F_MID=0x10,F_HIGH=0x20,F_CTR=0x40,F_UNBLK=0x80;
 function kindOf(c){ if(c[0]===0) return "GUARD"; if(c[1]===1) return "THROW"; return "STRIKE"; }
+/* A zero-power card is a guard. Naming it "GAINED GUARD 0" reports a gain
+   that did not happen. Say the guard's real flavor, and say nothing that
+   looks like a scored reward when there is no power to score. */
+function cardGainLine(card){
+  if(!card) return null;
+  const kind=kindOf(card);
+  if(kind==="GUARD"){
+    const sub=subOf(card);
+    return sub?("KURUKURU CARD - GAINED "+sub):null;
+  }
+  const pow=Math.round(Number(card[0])||0);
+  if(pow<=0) return null;
+  return "KURUKURU CARD - GAINED "+kind+" "+pow;
+}
 function isLauncher(c){ return c[0]>0 && c[1]>=4; }
 function subOf(c){ // guard flavors
   if(c[0]!==0) return "";
@@ -1891,7 +1905,7 @@ function advMove(dx,dy){
     sLevel(); }
   const c=m.cards.find(o=>!o.used&&o.x===nx&&o.y===ny);
   if(c){ c.used=true; a.used[c.key]=1; const card=grantCard(a);
-    m.msg=card?("KURUKURU CARD - GAINED "+kindOf(card)+" "+card[0]):"KURUKURU CARD - DECK FULL";
+    m.msg=card?(cardGainLine(card)||"KURUKURU CARD"):"KURUKURU CARD - DECK FULL";
     sWin(); }
   const p=m.pits.find(o=>o.x===nx&&o.y===ny);
   if(p){ a.hp=Math.max(1,a.hp-8); m.msg="PIT! -8 HP"; sBad(); }
@@ -2865,7 +2879,7 @@ function commitEvent(d,mitig){
     CombatFX.setDesperation((d.p.hp/d.p.maxhp)<=0.20);
   }
   battleLog(d,line);
-  say(d.msg+". "+d.msg2+". You "+d.p.hp+", opponent "+d.e.hp+".");
+  say(fightStatusLine(d));
   /* The juggle is the only timed active input in the game, and gating it on
      tech.launcher alone meant a whole encounter could pass without one firing.
      A clean three-link combination puts a man in the air whether or not the
@@ -2920,7 +2934,7 @@ function turnEnd(d){
   if(d.oneShot&&d.p.hp>0&&d.e.hp>0){
     const dealt=Math.max(0,(d.eHp0||d.e.maxhp)-d.e.hp);
     const taken=Math.max(0,(d.pHp0||d.p.maxhp)-d.p.hp);
-    if(dealt>=taken){ d.e.hp=0; d.oneShotDrop=true; }
+    if(dealt>=taken){ d.e.hp=0; d.e.ghost=0; d.oneShotDrop=true; }
     else d.repel=true;
   }
   if(d.p.hp<=0||d.e.hp<=0||d.repel){
@@ -2938,7 +2952,12 @@ function turnEnd(d){
     if(typeof AICoach!=="undefined"&&typeof AICoach.analyzeBout==="function"){
       d.coachAnalysis=AICoach.analyzeBout(d,d.p,d.e);
     }
+    d.p.hp=Math.max(0,d.p.hp); d.e.hp=Math.max(0,d.e.hp);
+    d.p.ghost=d.p.hp; d.e.ghost=d.e.hp;
     d.ph=D.END; d.t=0; if(d.p.hp<=0) sKO(); else if(d.repel) sBad(); else sWin();
+    /* The exchange was announced before upkeep and before a one-exchange
+       patrol is dropped to 0. Say it again from the numbers the bar shows. */
+    say(fightStatusLine(d));
     /* the stinger starts at the bell, not at the result screen, so the walk
        from the finish to the scorecard is scored rather than silent */
     ringBell(3); crowdFire(crowdSwell("ko"));
@@ -2946,6 +2965,25 @@ function turnEnd(d){
   }
   else beginRound(d);
 }
+/* The words under a finish. K.O. only when the opponent bar is empty.
+   A repel leaves them standing, so it must not say K.O., and the number
+   is the HP the bar is drawing. */
+function duelOutcomeWord(d){
+  if(!d) return "";
+  const opp=Math.max(0,Math.round(d.e.hp)), you=Math.max(0,Math.round(d.p.hp));
+  if(d.hotseat) return (you>0&&!d.repel)?"PLAYER ONE WINS":"PLAYER TWO WINS";
+  if(opp<=0&&you>0&&!d.repel) return "K.O.";
+  if(d.repel) return "DRIVEN OFF";
+  return "DEFEAT";
+}
+function fightStatusLine(d){
+  const you=Math.max(0,Math.round(d.p.hp)), opp=Math.max(0,Math.round(d.e.hp));
+  const ended=d.ph===D.END;
+  const word=ended?duelOutcomeWord(d):"";
+  const head=word==="K.O."?"K.O. ":word==="DRIVEN OFF"?"Driven off. ":word==="DEFEAT"?"Defeat. ":"";
+  return head+(d.msg||"")+". "+(d.msg2||"")+". You "+you+", opponent "+opp+".";
+}
+function lastAnnouncement(){ return lastSaid; }
 function incomingOn(d,who){ return (d.ev&&d.ev.hit&&d.pendingAct&&d.pendingAct.side!==who)?d.ev.dmg:0; }
 /* the moment a hit is inbound, the player gets a live window to time a guard */
 function openDefence(d){
@@ -3620,6 +3658,18 @@ const sceneKey=()=>SCENE_KEY[G.scene]||"";
 const LG=(action,verb)=>Keybindings.legendFor(action,verb,sceneKey());
 const KH=(action)=>Keybindings.legendFor(action,"",sceneKey());
 const LGJ=(...parts)=>parts.filter(Boolean).join("   \u00B7   ");
+/* Movement keys, read off the same table a press is resolved through, so
+   the field cannot advertise a key that does not move. */
+function fieldMoveLegend(){
+  const scene="MAP";
+  const act=(key)=>Keybindings.arenaAction(key,scene);
+  const arrows=act("ArrowUp")==="up"&&act("ArrowDown")==="down"&&act("ArrowLeft")==="left"&&act("ArrowRight")==="right";
+  const wasd=act("w")==="up"&&act("a")==="left"&&act("s")==="down"&&act("d")==="right";
+  const parts=[];
+  if(arrows) parts.push("ARROWS");
+  if(wasd) parts.push("WASD");
+  return (parts.join(" / ")||"ARROWS")+" - MOVE";
+}
 /* The page owns the keyboard until you actually engage the arena. Before this
    the game swallowed every arrow and space press document-wide, so you could
    not scroll down to the data table it renders. */
@@ -3635,16 +3685,18 @@ function setFocused(v){
 addEventListener("pointerdown",e=>setFocused(stageEl.contains(e.target)),true);
 addEventListener("focusin",e=>{ if(stageEl.contains(e.target)) setFocused(true);
                                 else if(e.target!==document.body) setFocused(false); });
-addEventListener("keydown",e=>{
-  if(e.ctrlKey||e.metaKey||e.altKey) return;
+function arenaFocused(){ return gameFocused; }
+function onArenaKey(e){
+  if(!e||e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.key==="Tab") return;
   if(!gameFocused) return;          // let the page scroll
   /* the scene overrides (X / D cycle difficulty on the title, the brief,
-     options, the menu and select) live in the table too, so a legend on
-     those scenes knows X is not "back" there */
+     options, the menu and select; A confirms on the title) live in the
+     table too, so a legend on those scenes names the key that fires */
   const k=Keybindings.arenaAction(e.key,sceneKey()); if(!k) return;
-  e.preventDefault(); onKey(k);
-});
+  if(typeof e.preventDefault==="function") e.preventDefault(); onKey(k);
+}
+addEventListener("keydown",onArenaKey);
 document.querySelectorAll("[data-k]").forEach(b=>{
   const k=b.dataset.k;
   b.addEventListener("pointerdown",e=>{ e.preventDefault(); setFocused(true); b.classList.add("on"); onKey(k); });
@@ -3730,15 +3782,30 @@ syncSnd();
 const settingsToggleBtn=document.getElementById("settingsToggleBtn");
 const settingsCloseBtn=document.getElementById("settingsCloseBtn");
 const settingsDrawer=document.getElementById("settingsDrawer");
+/* Closing the drawer used to leave focus on the close button, which sits
+   outside the arena. The next key then dropped on the floor until the
+   canvas was clicked again, so pause (the key the map names) did nothing. */
+function focusArena(){
+  setFocused(true);
+  if(cvEl&&typeof cvEl.focus==="function"){
+    try{ cvEl.focus({preventScroll:true}); }
+    catch(err){ try{ cvEl.focus(); }catch(e2){} }
+  }
+}
+function closeSettingsDrawer(){
+  if(settingsDrawer&&settingsDrawer.classList&&settingsDrawer.classList.remove)
+    settingsDrawer.classList.remove("open");
+  focusArena();
+}
 if(settingsToggleBtn && settingsDrawer){
   settingsToggleBtn.addEventListener("click",()=>{
-    settingsDrawer.classList.toggle("open");
-    if(typeof sPick==="function") sPick();
+    if(settingsDrawer.classList.contains("open")) closeSettingsDrawer();
+    else { settingsDrawer.classList.add("open"); if(typeof sPick==="function") sPick(); }
   });
 }
 if(settingsCloseBtn && settingsDrawer){
   settingsCloseBtn.addEventListener("click",()=>{
-    settingsDrawer.classList.remove("open");
+    closeSettingsDrawer();
     if(typeof sPick==="function") sPick();
   });
 }
@@ -3746,7 +3813,7 @@ if(typeof addEventListener==="function"){
   addEventListener("pointerdown",e=>{
     if(settingsDrawer && settingsDrawer.classList && settingsDrawer.classList.contains && settingsDrawer.classList.contains("open")){
       if(settingsDrawer.contains && !settingsDrawer.contains(e.target) && settingsToggleBtn && settingsToggleBtn.contains && !settingsToggleBtn.contains(e.target)){
-        settingsDrawer.classList.remove("open");
+        closeSettingsDrawer();
       }
     }
   });
@@ -3950,13 +4017,19 @@ function openDossier(id,from){
 }
 /* ---------- menu is built from what the save actually holds ---------- */
 /* A fighter is mastered when they have earned a belt, not when they appear in
-   the select grid. */
-function masteredCount(){
+   the select grid. STARTERS are handed to every save and are not belts.
+   Title, select, records and the board all ask this, so they cannot disagree. */
+function fighterMastered(fid){
+  if(typeof masteryLevel==="function") return masteryLevel(SAVE,fid)>0;
   const m=(SAVE&&SAVE.mastery)||{};
+  return (m[fid]|0)>0;
+}
+function masteredCount(){
   let n=0;
-  for(const k in m){ if(typeof masteryLevel==="function"?masteryLevel(SAVE,+k)>0:(m[k]>0)) n++; }
+  for(let i=0;i<FIGHTERS.length;i++) if(fighterMastered(i)) n++;
   return n;
 }
+function rosterMasteredLabel(){ return masteredCount()+" / "+FIGHTERS.length; }
 function menuItems(){
   const it=[];
   if(SAVE.run&&SAVE.run.adv) it.push(["CONTINUE RUN","stage "+SAVE.run.adv.stage+" - lv "+SAVE.run.adv.level+" - "+FIGHTERS[SAVE.run.adv.hero].name,"cont"]);
@@ -6234,7 +6307,7 @@ function rTitle(){
      so the only visible progress bar in the game opened at 3/25 MASTERED before
      the player had thrown a punch, and the three tiles that looked finished
      were the three they were supposed to start with. Mastery is SAVE.mastery. */
-  const progText = masteredCount()+" / "+FIGHTERS.length+" FIGHTERS MASTERED" + ((SAVE.rec.ngplus||0)?"   \u00B7   NG+ "+SAVE.rec.ngplus:"");
+  const progText = rosterMasteredLabel()+" FIGHTERS MASTERED" + ((SAVE.rec.ngplus||0)?"   \u00B7   NG+ "+SAVE.rec.ngplus:"");
   txt(progText, W/2, 502, 11, "rgba(156,163,175,0.65)", "center", 700, false, "'Rajdhani',sans-serif");
 
   if(rk.totalMatches) txt(rk.rank.title.toUpperCase()+"   \u00B7   "+rk.promotionPoints+" PTS", W/2, 522, 12, rk.rank.color, "center", 800, false, "'Rajdhani',sans-serif");
@@ -6302,7 +6375,7 @@ function fitMenuDesc(desc, budget) {
 function menuPreview(key){
   const rec=SAVE.rec||{}, run=SAVE.run&&SAVE.run.adv;
   if(key==="cont"&&run) return ["THE RUN SO FAR", "STAGE "+run.stage, FIGHTERS[run.hero].name+" - LEVEL "+run.level];
-  if(key==="adv")    return ["THE CLIMB", masteredCount()+" / "+FIGHTERS.length, "ROSTER MASTERED"];
+  if(key==="adv")    return ["THE CLIMB", rosterMasteredLabel(), "ROSTER MASTERED"];
   if(key==="ng")     return ["NEW GAME +", "NG+ "+(rec.ngplus||0), "EVERYONE HITS HARDER"];
   if(key==="surv")   return ["SURVIVAL", String(rec.bestSurv||0), "BEST STREAK"];
   if(key==="daily"){ const D=dailyState(SAVE,dayKey());
@@ -6462,7 +6535,7 @@ function rMenu(){
   const footerY = H - 42;
   panel(40, footerY, W - 80, 28, "rgba(10,14,22,.90)", "#202636", null, 6);
   txt(MENU_TABS[G.menuTab|0].name + "  " + (pageIdx + 1) + " / " + pageCount, 60, footerY + 18, 10.5, AQUA, "left", 800);
-  txt("ARROWS - MOVE   ·   Y - NEXT TAB   ·   A - SELECT   ·   B - TITLE", W / 2 + 30, footerY + 18, 10.5, DIM, "center", 700);
+  txt(LGJ("ARROWS - MOVE", LG("y","NEXT TAB"), LG("a","SELECT"), LG("b","TITLE")), W / 2 + 30, footerY + 18, 10.5, DIM, "center", 700);
   artNote();
 }
 /* One topic per thing you can be doing, so help is about the mode you are
@@ -6912,7 +6985,7 @@ function rBoard(){
     if(rows.length<=1) txt("FIGHT RANKED MATCHES TO FILL THE LADDER",W/2,240,12,DIM,"center",600);
   } else {
     const R=SAVE.rec, best=[
-      ["MASTERED FIGHTERS",SAVE.unlocked.length+" / "+FIGHTERS.length],
+      ["MASTERED FIGHTERS",rosterMasteredLabel()],
       ["CAREER WINS",R.wins||0],
       ["PERFECT VICTORIES",R.perfect||0],
       ["BEST LADDER GRADE",rankByIndex(rankApi().getPlayerRanking(YOU).data.peakRank.index).title.toUpperCase()],
@@ -8254,7 +8327,7 @@ function rRecords(){
   txt("CAREER RECORD",W/2,150,17,INK,"center",800);
   const stats=[["DUELS",R.duels||0],["WINS",R.wins||0],["LOSSES",R.losses||0],["PERFECTS",R.perfect||0],
                ["STAGES CLEARED",R.stages||0],["BEST SURVIVAL",R.bestSurv||0],["NEW GAME +",R.ngplus||0],
-               ["MASTERED",SAVE.unlocked.length+"/"+FIGHTERS.length]];
+               ["MASTERED",masteredCount()+"/"+FIGHTERS.length]];
   stats.forEach((s,i)=>{
     const x=60+(i%4)*222, y=176+Math.floor(i/4)*54;
     panel(x,y,210,44,"#101218","#252831");
@@ -8315,7 +8388,7 @@ function rSelect(){
 
   // Top Bar
   txt(title,W/2,36,18,INK,"center",800);
-  txt(SAVE.unlocked.length+" / "+FIGHTERS.length+" MASTERED",44,36,10.5,GOLD,"left",700);
+  txt(rosterMasteredLabel()+" MASTERED",44,36,10.5,GOLD,"left",700);
   drawDifficultyBadge(W-190,16,150,24);
 
   const id=list[G.sel], b=bioOf(id);
@@ -8379,7 +8452,7 @@ function rSelect(){
   list.forEach((fid,i)=>{
     const col = i % 7, row = Math.floor(i / 7);
     const x = ox + col * (cw + gapX), y = oy + row * (ch + gapY);
-    const on = (i === G.sel), mastered = SAVE.unlocked.includes(fid);
+    const on = (i === G.sel), mastered = fighterMastered(fid);
     const fBio = bioOf(fid);
 
     if(on){
@@ -8663,7 +8736,8 @@ function rMap(){
   }
 
   panel(240,H-34,460,26,"rgba(8,9,11,.92)","#252831");
-  txt(m.msg||("FIND THE "+(m.ogre?"TOWER":"EXIT")+" - "+m.steps+" STEPS LEFT"),252,H-16,11.5,INK,"left",700);
+  txt(fieldMoveLegend(),252,H-16,11,AQUA,"left",800);
+  txt(m.msg||("FIND THE "+(m.ogre?"TOWER":"EXIT")+(m.ogre?"":" - EAST SIDE")+" - "+m.steps+" STEPS LEFT"),468,H-16,11,INK,"left",700);
 }
 function rPause(){
   rMap();
@@ -9893,9 +9967,11 @@ function rDuel(){
     cx.fillStyle="rgba(5,6,8,.7)"; cx.fillRect(0,0,W,H);
     /* the repel leaves the player standing, so p.hp>0 is no longer the whole
        question - endDuel asks it the same way */
-    const win=d.p.hp>0&&!d.repel;
-    txt(d.hotseat?(win?"PLAYER ONE WINS":"PLAYER TWO WINS"):(win?"K.O.":(d.repel?"DRIVEN OFF":"DEFEAT")),
-        W/2,250,win||d.hotseat?58:(d.repel?48:64),win?INK:RED,"center",800,true);
+    const word=duelOutcomeWord(d);
+    const win=word==="K.O."||word==="PLAYER ONE WINS";
+    txt(word, W/2,250,win||d.hotseat?58:(d.repel?48:64),win?INK:RED,"center",800,true);
+    txt("YOU "+Math.max(0,Math.round(d.p.hp))+"    OPPONENT "+Math.max(0,Math.round(d.e.hp)),
+        W/2,312,13,DIM,"center",700);
     if(d.repel) txt("THE PATROL TOOK THE BETTER OF THE EXCHANGE",W/2,290,13,DIM,"center",700);
     if(win&&!d.p.tookDamage) txt("PERFECT",W/2,290,20,GOLD,"center",800);
     if((G.t/30|0)%2) txt("PRESS "+KH("a"),W/2,340,14,INK,"center",800);
@@ -10733,10 +10809,10 @@ function rCredits(){
    ================================================================ */
 let sceneSaid=-1;
 const SCENE_LABEL={};
-SCENE_LABEL[S.TITLE]="Title screen. Press A.";
+SCENE_LABEL[S.TITLE]="Title screen. Press "+Keybindings.arenaKeysFor("a","TITLE").slice(0,3).join(", ")+" to start.";
 SCENE_LABEL[S.MENU]="Main menu.";
 SCENE_LABEL[S.SELECT]="Fighter select.";
-SCENE_LABEL[S.MAP]="Adventure field.";
+SCENE_LABEL[S.MAP]="Adventure field. "+fieldMoveLegend()+". Reach the exit on the east side.";
 SCENE_LABEL[S.PAUSE]="Paused.";
 SCENE_LABEL[S.OPTIONS]="Options.";
 SCENE_LABEL[S.RECORDS]="Career records.";
