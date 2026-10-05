@@ -6027,9 +6027,9 @@ function panel(x,y,w,h,fill,stroke,glow,radius){
    AZX FORCE. The body is the borrowed art, lit the same way the player is.
    Art is embedded, so this holds on file:// and on a local server. */
 function ringSilhouette(){ return false; }
-/* AZX Force is a faction, not a roster row. The build keeps one
-   portrait that no named fighter uses and publishes it as Patrol, so a
-   patrol wears that face instead of someone standing on the same field. */
+/* AZX Force is a faction, not a roster row. The build publishes one
+   human portrait that no named fighter uses as Patrol, so a patrol
+   wears that face instead of someone standing on the same field. */
 const PATROL_FACE="Patrol";
 function artIm(fid, artName){
   if(artName&&typeof IMGS!=="undefined"&&IMGS[artName]) return IMGS[artName];

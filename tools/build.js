@@ -39,9 +39,9 @@ function tonConfigForBuild() {
 
 let t = fs.readFileSync(path.resolve(__dirname, "..", "src", "page.template.html"), "utf8");
 const rom = fs.readFileSync(SP + "romdata.js", "utf8").trim();
-// The unused portrait stays in the art pack under a name the page can
-// draw, and the old name is removed so it does not ship. The dossier
-// goes entirely: there is no roster row for it.
+// Force wears this portrait. It stays out of the roster under the old
+// source name, and the build publishes it as Patrol. The old name is
+// removed so it does not ship, and there is no roster row for it.
 const CUT = ["Solifer"];
 function stripKeys(line, prefix) {
   const obj = JSON.parse(line.slice(prefix.length, line.lastIndexOf(";")));

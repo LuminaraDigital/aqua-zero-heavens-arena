@@ -481,6 +481,11 @@ module.exports = function (h) {
     ok(faces === 0, "a patrol does not keep a kit that belongs to someone on this field", faces);
     ok(PAGE.indexOf('PATROL_FACE="Patrol"') >= 0 && !/solifer/i.test(PAGE),
        "patrols draw a portrait that is not a named roster fighter");
+    const patrolArt = PAGE.match(/"Patrol":\{"w":439,"h":640,"d":"([^"]+)"\}/);
+    ok(!!patrolArt, "AZX Force ships its own portrait");
+    ok(require("crypto").createHash("sha256").update(patrolArt ? patrolArt[1] : "").digest("hex")
+         === "70c52c8b9eb0efaea96c3dc9b39c3d5e6ef4e289e9b0002ab12f9775d9393cb1",
+       "the Force portrait is the human fighter");
     ok(A.exec("divLabel('Middleweight')") === "Middle"
        && A.exec("divLabel('Welterweight')") === "Welter"
        && A.exec("divLabel('Light Heavyweight')") === "Lt Heavy",
