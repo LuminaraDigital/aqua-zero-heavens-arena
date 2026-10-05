@@ -103,7 +103,7 @@ window.Keybindings = (function() {
     var ARENA_KEYS = {
         ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
         w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right",
-        z: "a", Z: "a", Enter: "a", " ": "a",
+        z: "a", Z: "a", Enter: "a", NumpadEnter: "a", " ": "a",
         b: "b", B: "b", x: "b", X: "b", Escape: "b", Backspace: "b",
         y: "y", Y: "y", c: "y", C: "y", i: "y", I: "y",
         r: "rand", R: "rand",
@@ -112,16 +112,19 @@ window.Keybindings = (function() {
     };
     /* scene overrides, consulted BEFORE the table. The title prints
        "A / Z" as start, so A confirms there even though it is left
-       everywhere else. X / D cycle difficulty on the screens that say so,
-       which is why a back legend on those screens names ESC instead. */
+       everywhere else. X cycles difficulty on the screens that say so.
+       Arrow keys step it on the title only. WASD never does: D is
+       also the field's move-right key, and a held D used to change
+       the difficulty of the fight you walked into. */
     var ARENA_OVERRIDES = [
         { action: "a", keys: ["a", "A"], scenes: ["TITLE"] },
-        { action: "diff", keys: ["x", "X", "d", "D"], scenes: ["TITLE", "BRIEF", "OPTIONS"] },
-        { action: "diff", keys: ["x", "X"], scenes: ["MENU", "SELECT"] }
+        { action: "diffDown", keys: ["ArrowLeft"], scenes: ["TITLE"] },
+        { action: "diffUp", keys: ["ArrowRight"], scenes: ["TITLE"] },
+        { action: "diff", keys: ["x", "X"], scenes: ["TITLE", "OPTIONS", "MENU", "SELECT"] }
     ];
     var PAD_GLYPH = { a: "A", b: "B", y: "Y", x: "X" };
     var KEY_LABEL = {
-        " ": "SPACE", Enter: "ENTER", Escape: "ESC", Backspace: "BKSP",
+        " ": "SPACE", Enter: "ENTER", NumpadEnter: "ENTER", Escape: "ESC", Backspace: "BKSP",
         ArrowUp: "\u2191", ArrowDown: "\u2193", ArrowLeft: "\u2190", ArrowRight: "\u2192"
     };
 
@@ -142,7 +145,7 @@ window.Keybindings = (function() {
     /* the keyboard keys that perform an action on a scene, as labels,
        without case duplicates - the first is the primary. A scene's
        overrides are walked first, in the order they are written, so the
-       difficulty legend reads X / D rather than whatever order the table
+       difficulty legend reads X rather than whatever order the table
        happens to hold those letters in. */
     function arenaKeysFor(action, sceneName) {
         var out = [], seen = {}, k, i;

@@ -218,22 +218,35 @@ var CardRenderer = (function () {
       }
     }
 
-    // --- counter-play note: only the selected card has room for words ---
+    /* A lesson stamps GOOD or BAD on every card in the hand. The selected
+       card still gets the full read. The others get the word, so the tell
+       can be answered without scrolling onto each one. */
+    var lessonWord = "";
+    if (live.note && live.note.indexOf("GOOD") === 0) lessonWord = "GOOD";
+    else if (live.note && live.note.indexOf("BAD") === 0) lessonWord = "BAD";
     if (selected && live.note) {
       cx.fillStyle = "rgba(15, 23, 42, 0.92)";
       cx.fillRect(x + 5, noteY, w - 10, noteH);
-      cx.strokeStyle = "rgba(245, 158, 11, 0.5)";
+      cx.strokeStyle = lessonWord === "BAD" ? "rgba(224,58,47,.7)" : (lessonWord === "GOOD" ? "rgba(16,185,129,.7)" : "rgba(245, 158, 11, 0.5)");
       cx.lineWidth = 1;
       cx.strokeRect(x + 5, noteY, w - 10, noteH);
       cx.fillStyle = live.noteColor || "#f0b849";
       cx.fillRect(x + 5, noteY, 3, noteH);
 
-      var noteFont = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
+      var noteFont = "bold 12px 'Rajdhani','Teko',Bahnschrift,sans-serif";
       cx.fillStyle = live.noteColor || "#f0b849";
       cx.font = noteFont;
       cx.textAlign = "left";
       cx.textBaseline = "middle";
       cx.fillText(clipText(cx, live.note, w - 20, noteFont), x + 11, noteY + noteH / 2);
+    } else if (lessonWord) {
+      cx.fillStyle = lessonWord === "GOOD" ? "rgba(16,185,129,.28)" : "rgba(224,58,47,.32)";
+      cx.fillRect(x + 5, noteY, w - 10, noteH);
+      cx.fillStyle = lessonWord === "GOOD" ? "#34d399" : "#fecdd3";
+      cx.font = "bold 11px 'Rajdhani','Teko',Bahnschrift,sans-serif";
+      cx.textAlign = "left";
+      cx.textBaseline = "middle";
+      cx.fillText(lessonWord, x + 11, noteY + noteH / 2);
     }
   }
 
@@ -847,7 +860,7 @@ var CardRenderer = (function () {
         fanAngle: fanAngle,
         pitch: pitch,
         roll: roll,
-        scale: isSelected ? 1.08 : (isHovered ? 1.04 : 1.0),
+        scale: isSelected ? (opts.selectedScale || 1.08) : (isHovered ? (opts.hoverScale || 1.04) : 1.0),
         hotkeyBadge: opts.hotkeys !== false ? ("[" + (i + 1) + "]") : null,
         live: liveArr ? (liveArr[i] || null) : null,
       });

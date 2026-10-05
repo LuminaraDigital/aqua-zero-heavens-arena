@@ -200,7 +200,7 @@
      100vh lines above stay as the fallback for anything that lacks dvh. */
   @supports (height:100dvh){
     canvas#s{ height:100dvh; max-height:100dvh; }
-    body.in-run canvas#s{ height:calc(100dvh - 46px); max-height:calc(100dvh - 46px); }
+    body.in-run canvas#s{ height:calc(100dvh - 136px); max-height:calc(100dvh - 136px); }
     html,body{ height:100dvh; min-height:100dvh; }
   }
   canvas#s:focus{outline:none}
@@ -215,14 +215,14 @@
   body.in-run header, body.in-run .showcase-bar{display:none}
   body.in-run{gap:0; padding-top:0}
   /* THE BUTTON BAR IS NOT ALLOWED TO STAND ON THE GAME. .hud-bar is fixed to
-     the bottom of the viewport and only shows during a run; the canvas is
-     object-fit:contain across the whole viewport, so on any window near 16:9
-     the picture reaches the bottom edge and the bar covered the technique cards
-     the player is choosing between. Reserving its height keeps the letterbox
-     doing the job a letterbox is for. */
+     the bottom of the viewport and only shows during a run. A 16:9 picture
+     centered in a short window still ran under that bar, and under the
+     settings cluster at the top. The run pins the picture below the cluster
+     and leaves a strip under it for the buttons. */
+  body.in-run .stage{ justify-content:flex-start; padding-top:48px; }
   body.in-run canvas#s{
-    align-self:center; width:100vw; height:calc(100vh - 46px);
-    max-width:100vw; max-height:calc(100vh - 46px);
+    align-self:center; width:100vw; height:calc(100vh - 136px);
+    max-width:100vw; max-height:calc(100vh - 136px);
     aspect-ratio:16/9; object-fit:contain;
   }
 
@@ -1125,11 +1125,13 @@ function drawDifficultyBadge(x, y, w, h, compact){
   if(typeof cx.roundRect==="function"){ cx.stroke(); } else { cx.strokeRect(x+.5, y+.5, bw-1, bh-1); }
   cx.fillStyle = col;
   cx.fillRect(x, y, 3, bh);
-  if(compact){
-    txt("[X/D] " + cur.name, x + bw/2 + 2, y + bh/2 + 3.5, 9.5, col, "center", 800);
-  } else {
-    txt("[X/D] " + cur.name, x + bw/2 + 2, y + bh/2 + 3.5, 10, col, "center", 800);
-  }
+  /* Movement keys are never a difficulty control. The badge names the
+     key that actually cycles it on this scene, and names nothing on a
+     scene where walking and difficulty used to share a letter. */
+  const diffKeys=(typeof Keybindings!=="undefined"&&Keybindings.arenaKeysFor)
+    ? Keybindings.arenaKeysFor("diff", sceneKey()) : [];
+  const diffTag=diffKeys.length?("["+diffKeys[0]+"] "):"";
+  txt(diffTag + cur.name, x + bw/2 + 2, y + bh/2 + 3.5, compact?9.5:11, col, "center", 800);
   cx.restore();
   hot(x, y, bw, bh, null, () => { cycleDifficulty(); });
 }
@@ -1485,6 +1487,22 @@ const patrolKind=(p)=>PATROL_KINDS[Math.max(0,Math.min(PATROL_KINDS.length-1,(p&
 /* The field is rebuilt from (stage, reroll) so a re-roll gives a genuinely new
    layout - but a.beaten / a.used are per-stage, so nothing you already claimed
    comes back. Walking out of steps costs HP and buys you no fresh rewards. */
+/* A patrol borrows a roster kit. If that kit is the hero, or a named
+   rival standing on this same field, the two of them share a face.
+   Walk the seats after the nemesis substitution and move a colliding
+   kit onto a fighter who is not already here. No extra random draw:
+   the field layout stays the one the seed produced. */
+function clearPatrolFaces(foes, hero){
+  const named={};
+  if(typeof hero==="number"&&hero>=0&&hero<20) named[hero]=1;
+  (foes||[]).forEach(o=>{ if(o&&!o.tf&&o.id!==undefined&&o.id!==null) named[o.id]=1; });
+  (foes||[]).forEach(o=>{
+    if(!o||!o.tf||!named[o.art]) return;
+    for(let i=0;i<20;i++){
+      if(!named[i]){ o.art=i; named[i]=1; break; }
+    }
+  });
+}
 function newField(a){
   const N=15, ogre=a.level>=9;
   const g=Array.from({length:N},()=>Array(N).fill(0));
@@ -1618,6 +1636,7 @@ function newField(a){
       if(slot){ slot.id=nem; slot.key="rv"+nem; slot.done=false; }
     }
   }
+  clearPatrolFaces(foes, a.hero);
   const temples=[],cards=[],pits=[];
   for(let i=0;i<2;i++){ const [x,y]=take(); temples.push({x,y,key:"t"+i,used:!!a.used["t"+i]}); }
   for(let i=0;i<3;i++){ const [x,y]=take(); cards.push({x,y,key:"c"+i,used:!!a.used["c"+i]}); }
@@ -2045,9 +2064,11 @@ function mkSide(fid,hp,pool,opt){
   s.atkMul*=1+(top-55)/260;
   return s;
 }
-/* The first fights of a fresh stage-one run are a lesson, not a filter.
-   A later patrol is still one exchange. A save that has already fought,
-   or a new-game-plus run, keeps the ordinary rules. */
+/* The first fights of a stage-one run are a lesson, not a filter.
+   This is the run's own fight count. A career that already has duels,
+   or an onboarding flag left on the save, does not skip it: New
+   Adventure over an old run is still a new run. A later patrol, a
+   later stage, and new game plus keep the ordinary rules. */
 function lessonFightOf(opts){
   if(!opts||!opts.fromAdv||opts.lesson===false) return false;
   const a=G.adv;
@@ -2055,9 +2076,6 @@ function lessonFightOf(opts){
   if((a.ng||0)>0) return false;
   if((a.stage||1)!==1) return false;
   if((a.fights||0)>=2) return false;
-  const duels=(SAVE&&SAVE.rec&&SAVE.rec.duels)||0;
-  if(duels>=3) return false;
-  if(SAVE&&SAVE.onboarding&&SAVE.onboarding.done) return false;
   return true;
 }
 /* One idea on screen for this beat of a teaching fight. */
@@ -2077,6 +2095,14 @@ function gradeTell(d, tech){
   if(h.edge>0) return "ANSWERED THE TELL. "+h.note;
   if(h.edge<0) return "BAD ANSWER. "+h.note;
   return "NO READ ON THAT CARD";
+}
+/* The prefix a lesson card wears. Empty outside a lesson fight, so a
+   later bout does not stamp GOOD or BAD on every row. */
+function lessonMark(d, hint){
+  if(!d||!d.lessonFight||!hint) return "";
+  if(hint.edge>0) return "GOOD. ";
+  if(hint.edge<0) return "BAD. ";
+  return "";
 }
 function startDuel(opts){
   /* A ladder session only survives ladder bouts. Anything else seated here -
@@ -2248,7 +2274,8 @@ function startDuel(opts){
     rec:(SAVE.fr&&SAVE.fr[d.e.fid])||null,
     motion:motionOn(),
     boss:!!d.boss, ranked:!!d.ranked, survival:!!d.survival,
-    nemesis:!!d.nemesis, grudge:!!d.grudge, daily:!!d.daily, hotseat:!!d.hotseat});
+    nemesis:!!d.nemesis, grudge:!!d.grudge, daily:!!d.daily, hotseat:!!d.hotseat,
+    adventure:!!opts.fromAdv});
   /* venue skin is picked once at the bell so the backdrop stays stable for the fight */
   if(opts.venueId&&typeof VENUES!=="undefined"&&VENUES[opts.venueId]){
     d.venue=VENUES[opts.venueId];
@@ -3765,16 +3792,26 @@ function onArenaKey(e){
   if(!e||e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.key==="Tab") return;
   if(!gameFocused) return;          // let the page scroll
-  /* the scene overrides (X / D cycle difficulty on the title, the brief,
-     options, the menu and select; A confirms on the title) live in the
-     table too, so a legend on those scenes names the key that fires */
-  const k=Keybindings.arenaAction(e.key,sceneKey()); if(!k) return;
+  /* Capture phase, so a focused command button cannot swallow Enter
+     or B before the arena sees them. Numpad Enter reports a different
+     key on some browsers; it confirms, the same as Enter. */
+  let key=e.key;
+  if(e.code==="NumpadEnter") key="Enter";
+  const k=Keybindings.arenaAction(key,sceneKey()); if(!k) return;
   if(typeof e.preventDefault==="function") e.preventDefault(); onKey(k);
 }
-addEventListener("keydown",onArenaKey);
+addEventListener("keydown",onArenaKey,true);
 document.querySelectorAll("[data-k]").forEach(b=>{
   const k=b.dataset.k;
   b.addEventListener("pointerdown",e=>{ e.preventDefault(); setFocused(true); b.classList.add("on"); onKey(k); });
+  /* A keyboard activation of a button fires click with detail 0 and
+     never a pointer. Mouse clicks already ran on pointerdown. */
+  b.addEventListener("click",e=>{
+    if(!e||e.detail!==0) return;
+    e.preventDefault();
+    setFocused(true);
+    onKey(k);
+  });
   ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>b.classList.remove("on")));
 });
 /* ---------- the mouse is a first-class citizen ----------
@@ -4556,7 +4593,8 @@ function onKey(k){
   const sc=G.scene;
   if(sc===S.LOAD) return;
   if(sc===S.TITLE){
-    if(k==="diff"||k==="x"||k==="d"){ cycleDifficulty(); return; }
+    if(k==="diffDown"){ cycleDifficulty(-1); return; }
+    if(k==="diff"||k==="diffUp"||k==="x"){ cycleDifficulty(1); return; }
     if(k==="a"){G.scene=S.MENU;G.menuSel=0;sPick();}
     if(k==="b"){G.scene=S.HOW;G.howTopic="general";G.how=0;G.prevScene=S.TITLE;sPick();}
     return;
@@ -5442,7 +5480,6 @@ function onKey(k){
     return;
   }
   if(sc===S.BRIEF){
-    if(k==="diff"||k==="x"||k==="d"){ cycleDifficulty(); return; }
     if(k==="a"){ const f=G.brief.f, a=G.adv, ambush=!!G.brief.ambush; sPick();
       const ng=a.ng||0, dm=diff();
       if(f.boss) startDuel({boss:true,fromAdv:true,ng,stage:9,
@@ -5931,13 +5968,21 @@ function panel(x,y,w,h,fill,stroke,glow,radius){
    AZX FORCE. The body is the borrowed art, lit the same way the player is.
    Art is embedded, so this holds on file:// and on a local server. */
 function ringSilhouette(){ return false; }
-function drawFighterArt(fid,cxr,baseY,maxH,flip,silhouette,alpha,flash,rot){
+/* AZX Force is a faction, not a roster row. The build keeps one
+   portrait that no named fighter uses and publishes it as Patrol, so a
+   patrol wears that face instead of someone standing on the same field. */
+const PATROL_FACE="Patrol";
+function artIm(fid, artName){
+  if(artName&&typeof IMGS!=="undefined"&&IMGS[artName]) return IMGS[artName];
+  return artOf(fid);
+}
+function drawFighterArt(fid,cxr,baseY,maxH,flip,silhouette,alpha,flash,rot,artName){
   if(isCustomFighter(fid)){
     const sz = Math.min(maxH * 0.55, 180);
     drawCustomPortrait(fid, cxr - sz/2, baseY - sz, sz, sz);
     return;
   }
-  const im=artOf(fid); if(!im||!im.complete||!im.naturalWidth) return;
+  const im=artIm(fid, artName); if(!im||!im.complete||!im.naturalWidth) return;
   const r=Math.min(maxH/im.naturalHeight, 420/im.naturalWidth);
   const w=im.naturalWidth*r, h=im.naturalHeight*r;
   const venue=(G.duel&&G.duel.venue)||G.titleVenue||null;
@@ -5991,9 +6036,9 @@ function drawFighterArt(fid,cxr,baseY,maxH,flip,silhouette,alpha,flash,rot){
   cx.restore();
   cx.filter="none";
 }
-function drawPortrait(fid,x,y,w,h,silhouette){
-  if(isCustomFighter(fid)){ drawCustomPortrait(fid,x,y,w,h); return; }
-  const im=artOf(fid); if(!im||!im.complete||!im.naturalWidth) return;
+function drawPortrait(fid,x,y,w,h,silhouette,artName){
+  if(isCustomFighter(fid)&&!artName){ drawCustomPortrait(fid,x,y,w,h); return; }
+  const im=artIm(fid, artName); if(!im||!im.complete||!im.naturalWidth) return;
   const nw=im.naturalWidth, nh=im.naturalHeight;
   const side=Math.min(nw, nh*0.62);
   const sx=(nw-side)/2, sy=Math.min(nh*0.02, nh-side);
@@ -6208,7 +6253,7 @@ function drawTitleDifficultyBar(cxPos, cyPos){
       cx.restore();
       txt(d.name, tx + tabW/2, cyPos + 4, 11, col, "center", 900, false, "'Orbitron','Rajdhani',sans-serif");
     } else {
-      txt(d.name, tx + tabW/2, cyPos + 4, 10, "rgba(156,163,175,0.55)", "center", 700, false, "'Rajdhani',sans-serif");
+      txt(d.name, tx + tabW/2, cyPos + 4, 11, "#d1d5db", "center", 700, false, "'Rajdhani',sans-serif");
     }
 
     G.hot.push({ x: tx, y: cyPos - 13, w: tabW, h: h, click: () => { SAVE.diff = i; persist(); if(typeof sPick==="function") sPick(); } });
@@ -6384,8 +6429,28 @@ function rTitle(){
   G.hot.push({ x: bannerX, y: bannerY, w: bannerW, h: bannerH, click: () => onKey("a") });
 
   // 10. Secondary Action Prompt & Progress Status
-  txt(LGJ(LG("a","START"),LG("b","HOW TO PLAY"),LG("diff","DIFFICULTY")), W/2, 474, 12, "rgba(156,163,175,0.8)", "center", 700, false, "'Rajdhani',sans-serif");
-  G.hot.push({ x: W/2-180, y: 460, w: 360, h: 22, click: () => onKey("b") });
+  const footRaw=LGJ(LG("a","START"),LG("b","HOW TO PLAY"),"LEFT / RIGHT / X - DIFFICULTY");
+  txt(footRaw, W/2, 474, 13, "#e8eaee", "center", 700, false, "'Rajdhani',sans-serif");
+  /* Only the phrase that says how to play opens that page. The difficulty
+     words used to sit inside the same rectangle, so clicking them left
+     the title. */
+  {
+    const foot=String(footRaw).toUpperCase();
+    cx.font="700 13px 'Rajdhani','Teko','Orbitron','Bahnschrift','Segoe UI Variable',system-ui,sans-serif";
+    const fullW=cx.measureText(foot).width, left=W/2-fullW/2;
+    const howLeg=String(LG("b","HOW TO PLAY")).toUpperCase();
+    const howAt=foot.indexOf(howLeg);
+    if(howAt>=0){
+      const hx=left+cx.measureText(foot.slice(0,howAt)).width;
+      G.hot.push({ x:hx-2, y:458, w:cx.measureText(howLeg).width+4, h:22, click:()=>onKey("b") });
+    }
+    const startLeg=String(LG("a","START")).toUpperCase();
+    const startAt=foot.indexOf(startLeg);
+    if(startAt>=0){
+      const sx=left+cx.measureText(foot.slice(0,startAt)).width;
+      G.hot.push({ x:sx-2, y:458, w:cx.measureText(startLeg).width+4, h:22, click:()=>onKey("a") });
+    }
+  }
 
   const rk=myRanking();
   /* SAVE.unlocked starts as STARTERS - the three fighters every save is handed -
@@ -6419,7 +6484,7 @@ function rTitleBackdrop(){
 }
 
 /* Solid frosted acrylic backdrop for modals so underlying title/map/sprites never bleed through */
-function paintFrostedModalBackdrop(cx, W, H, title, subtitle, accentColor) {
+function paintFrostedModalBackdrop(cx, W, H, title, subtitle, accentColor, titleColor) {
   cx.fillStyle = "#07090e";
   cx.fillRect(0, 0, W, H);
 
@@ -6437,16 +6502,16 @@ function paintFrostedModalBackdrop(cx, W, H, title, subtitle, accentColor) {
   cx.fillRect(0, H - 60, W, 60);
 
   if (title) {
-    txt(title, W / 2, 46, 26, accentColor || GOLD, "center", 800, true);
+    txt(title, W / 2, 46, 26, titleColor || accentColor || GOLD, "center", 800, true);
   }
   if (subtitle) {
-    txt(subtitle, W / 2, 68, 10.5, DIM, "center", 600);
+    txt(subtitle, W / 2, 70, 13, "#e8eaee", "center", 600);
   }
 }
 
 function fitMenuDesc(desc, budget) {
   var s = String(desc || "").toUpperCase();
-  cx.font = "600 9.5px Bahnschrift,'Segoe UI Variable','Segoe UI',system-ui,sans-serif";
+  cx.font = "600 12px 'Rajdhani','Teko',Bahnschrift,'Segoe UI Variable',system-ui,sans-serif";
   if (cx.measureText(s).width <= budget) return s;
   while (s.length > 4 && cx.measureText(s + "...").width > budget) {
     s = s.slice(0, -1);
@@ -6523,7 +6588,7 @@ function rMenu(){
       const on=(G.menuTab|0)===i, cap=t.name, tw=cap.length*7.4+22;
       if(on){ cx.fillStyle="rgba(224,58,47,.20)"; cx.fillRect(tx,68,tw,18);
               cx.fillStyle=RED; cx.fillRect(tx,86,tw,2); }
-      txt(cap,tx+tw/2,81,10.5,on?INK:"#6b7280","center",800);
+      txt(cap,tx+tw/2,81,12,on?INK:"#d1d5db","center",800);
       hot(tx,66,tw,22,()=>{},()=>{ if((G.menuTab|0)!==i){ G.menuTab=i; G.menuSel=0; sTick(); } });
       tx+=tw+6;
     });
@@ -6609,7 +6674,7 @@ function rMenu(){
     // Subtitle Description
     const maxDescW = cardW - 150;
     const descStr = fitMenuDesc(it[1], maxDescW);
-    txt(descStr, x + 20, y + 84, 10, on ? INK : "#64748b", "left", 600);
+    txt(descStr, x + 20, y + 86, 12, on ? INK : "#d5dbe3", "left", 600);
 
     // Click & hover registration
     hot(x, y, cardW, cardH, () => { G.menuSel = i; }, () => { G.menuSel = i; onKey("a"); });
@@ -6826,14 +6891,23 @@ function rHow(){
   if(G.how>=pages.length) G.how=0;
   const pg=pages[G.how];
   txt(topic.name,W/2,44,22,INK,"center",800);
+  /* Columns stop above the page footer. A long page used to run its
+     last lines through the button bar. */
+  const pitch=15, colTop=96, colLimit=456;
   pg.forEach((c,ci)=>{
     const x=ci?W/2+40:70;
-    txt(c[0],x,80,14,RED,"left",800);
-    c[1].forEach((l,i)=>txt(l,x,104+i*21,11.5,INK,"left",600));
+    txt(c[0],x,78,14,RED,"left",800);
+    let y=colTop;
+    c[1].forEach(l=>{
+      if(y>colLimit) return;
+      if(!l){ y+=8; return; }
+      txt(l,x,y,12,INK,"left",600);
+      y+=pitch;
+    });
   });
-  txt("EVERY FIGHTER IS ONE 75-BYTE RECORD - FIFTEEN CARDS AND THE ORDER THEY ARRIVE IN",W/2,496,10.5,DIM,"center",600);
+  txt("EVERY FIGHTER IS ONE 75-BYTE RECORD - FIFTEEN CARDS AND THE ORDER THEY ARRIVE IN",W/2,478,12,"#d5dbe3","center",600);
   txt((G.how?"< PREV   ":"")+"PAGE "+(G.how+1)+"/"+pages.length+"   "
-      +(G.how<pages.length-1?LG("a","NEXT >"):LG("a","BACK"))+"   "+LG("b","BACK"),W/2,518,12,INK,"center",800);
+      +(G.how<pages.length-1?LG("a","NEXT >"):LG("a","BACK"))+"   "+LG("b","BACK"),W/2,506,14,INK,"center",800);
 }
 /* One list, read by both the renderer and the key handler, so a row can never
    be drawn in one place and acted on in another. */
@@ -8456,6 +8530,35 @@ function rRecords(){
   });
   txt(LG("a","BACK"),W/2,H-24,12,INK,"center",800);
 }
+/* Weight classes were sliced at eight letters, which cut MIDDLEWEIGHT
+   into MIDDLEWE. Drop the trailing word and shorten the one class
+   that still does not fit a roster cell. */
+function divLabel(div){
+  if(!div) return "AZHA";
+  let s=String(div).replace(/weight$/i, "");
+  if(/^light heavy$/i.test(s)) s="Lt Heavy";
+  return s;
+}
+function fitLine(s, budget, size, weight){
+  let t=String(s||"");
+  cx.font=(weight||700)+" "+size+"px 'Rajdhani','Teko',Bahnschrift,sans-serif";
+  if(cx.measureText(t).width<=budget) return t;
+  while(t.length>3 && cx.measureText(t+"...").width>budget) t=t.slice(0,-1);
+  return t+"...";
+}
+function wrapDisc(s, budget){
+  const parts=String(s||"").split(" / ");
+  const lines=[];
+  let cur="";
+  cx.font="700 11px 'Rajdhani','Teko',Bahnschrift,sans-serif";
+  parts.forEach(p=>{
+    const next=cur?(cur+" / "+p):p;
+    if(cur && cx.measureText(next).width>budget){ lines.push(cur); cur=p; }
+    else cur=next;
+  });
+  if(cur) lines.push(cur);
+  return lines.slice(0,2);
+}
 function rSelect(){
   bgFill("#0e1014","#08090b");
   const list=selList(), cols=SEL_COLS;
@@ -8515,21 +8618,26 @@ function rSelect(){
     if(typeof StatRadar!=="undefined"&&StatRadar.render){
       StatRadar.render(cx, 575, 180, 62, b ? b.a : null, { strokeColor: AQUA, fillColor: "rgba(34,211,238,.22)" });
     }
-    txt("STYLE & ATTRIBUTES", 670, 80, 12, AQUA, "left", 800);
+    txt("STYLE & ATTRIBUTES", 670, 76, 12, AQUA, "left", 800);
     const d=DECKS[FIGHTERS[id].deck], t=airTiers(id), tr=traitsOf(id);
     const discNames = disciplinesOf(id).map(x => DISCIPLINES[x] ? DISCIPLINES[x].name : x).join(" / ");
-    txt("DISCIPLINE: " + discNames, 670, 102, 10, INK, "left", 700);
-    txt("ARCHETYPE: " + tr.tag, 670, 122, 10, GOLD, "left", 700);
-    txt("HP: " + tr.hp + "   FOCUS: " + tr.foc, 670, 142, 10, INK, "left", 700);
-    txt("AIR TIERS: " + t[0] + "/" + t[1] + "/" + t[2] + "  TOP: " + Math.max(...d.slice(0,12).map(c=>c[0])), 670, 162, 9.5, DIM, "left", 600);
+    /* The label is part of the first line. Wrapping the names alone, then
+       gluing DISCIPLINE: on the front, pushed that line out of the panel. */
+    const discLines = wrapDisc("DISCIPLINE: "+discNames, 228);
+    discLines.forEach((ln,i)=>txt(ln, 670, 94+i*13, 11, INK, "left", 700));
+    const dy=(discLines.length-1)*13;
+    txt("ARCHETYPE: " + tr.tag, 670, 122+dy, 11, GOLD, "left", 700);
+    txt("HP: " + tr.hp + "   FOCUS: " + tr.foc, 670, 138+dy, 11, INK, "left", 700);
+    txt("AIR TIERS: " + t[0] + "/" + t[1] + "/" + t[2] + "  TOP: " + Math.max(...d.slice(0,12).map(c=>c[0])), 670, 154+dy, 11, "#d5dbe3", "left", 600);
 
-    panel(668, 168, 240, 118, "rgba(16,21,32,.92)", GOLD, "rgba(245,158,11,.1)", 6);
+    const sigY=168+dy;
+    panel(668, sigY, 240, Math.max(96, 292-sigY), "rgba(16,21,32,.92)", GOLD, "rgba(245,158,11,.1)", 6);
     const sigTech = FIGHTERS[id].sig ? TECH[FIGHTERS[id].sig] : null;
-    txt("SIGNATURE TECHNIQUE", 682, 186, 11, GOLD, "left", 800);
-    txt(sigTech ? sigTech.name.toUpperCase() : "HEAVENS DRIVE", 682, 206, 13, INK, "left", 800);
-    txt(sigTech ? (sigTech.cls + " \u00B7 " + sigTech.range + " RANGE \u00B7 POW " + sigTech.power) : "MAXIMUM IMPACT", 682, 224, 11, AQUA, "left", 700);
-    txt(sigTech && sigTech.desc ? sigTech.desc : "Unleashes devastating kinetic burst on impact.", 682, 244, 11, INK, "left", 600);
-    txt("ARM REQUIREMENT: 50+ METER", 682, 270, 11, GOLD, "left", 700);
+    txt("SIGNATURE TECHNIQUE", 682, sigY+18, 11, GOLD, "left", 800);
+    txt(sigTech ? sigTech.name.toUpperCase() : "HEAVENS DRIVE", 682, sigY+36, 13, INK, "left", 800);
+    txt(sigTech ? (sigTech.cls + " \u00B7 " + sigTech.range + " RANGE \u00B7 POW " + sigTech.power) : "MAXIMUM IMPACT", 682, sigY+54, 11, AQUA, "left", 700);
+    txt(fitLine(sigTech && sigTech.desc ? sigTech.desc : "Unleashes devastating kinetic burst on impact.", 210, 11, 600), 682, sigY+72, 11, INK, "left", 600);
+    txt("ARM REQUIREMENT: 50+ METER", 682, sigY+90, 11, GOLD, "left", 700);
   }
 
   // Four roster rows, all above the footer. 25 fighters, 7 columns.
@@ -8559,8 +8667,9 @@ function rSelect(){
     const nm = FIGHTERS[fid].name;
     const nameY=ch>=40?y+18:y+Math.round(ch*0.45);
     const divY=ch>=40?y+34:y+ch-6;
-    txt(nm, x + 42, nameY, nm.length > 12 ? 11 : 12, on ? AQUA : INK, "left", 800);
-    txt(fBio ? fBio.div.slice(0, 8) : "AZHA", x + 42, divY, 11, isCustomFighter(fid) ? AQUA : "#e5e7eb", "left", 700);
+    const nameSize=nm.length>14?10:12;
+    txt(fitLine(nm, cw-58, nameSize, 800), x + 42, nameY, nameSize, on ? AQUA : INK, "left", 800);
+    txt(divLabel(fBio && fBio.div), x + 42, divY, 11, isCustomFighter(fid) ? AQUA : "#e5e7eb", "left", 700);
     if(isCustomFighter(fid)) txt("ENTRY", x + cw - 16, y + 34, 10, AQUA, "center", 800);
 
     hot(x, y, cw, ch, () => { G.sel = i; }, () => { G.sel = i; onKey("a"); });
@@ -8736,13 +8845,20 @@ function fieldRoute(m){
   if(via) return via;
   return {dest:exit, path:[exit]};
 }
+/* A foe who is closing in is drawn even through fog. The counter was
+   already counting them; the map was not. */
+function foeShown(m,f){
+  if(!f||f.done||!m) return false;
+  if(f.hunting) return true;
+  return !!(m.seen&&m.seen[f.y]&&m.seen[f.y][f.x]);
+}
 function fieldRouteCaption(m){
   const route=fieldRoute(m);
   const dest=route&&route.dest?route.dest:fieldExit(m);
   const exit=fieldExit(m);
   const steps=(m&&m.steps)||0;
   const exitWord=exit.kind==="TOWER"?"TOWER":"EAST";
-  return "NEXT: "+dest.kind+"    EXIT: "+exitWord+"    "+steps+" STEPS";
+  return steps+" STEPS    NEXT: "+dest.kind+"    EXIT: "+exitWord;
 }
 function rMap(){
   const a=G.adv,m=a.map;
@@ -8827,7 +8943,7 @@ function rMap(){
     cx.closePath(); cx.stroke(); cx.lineWidth=1;
     if(k.cond){ cx.fillStyle=k.color; cx.fillRect(X+C/2-3,Y+C-14,4,4); }
   });
-  m.foes.forEach(f=>{ if(f.done||!m.seen[f.y][f.x]) return; const [X,Y]=cell(f.x,f.y);
+  m.foes.forEach(f=>{ if(!foeShown(m,f)) return; const [X,Y]=cell(f.x,f.y);
     if(f.hunting&&(G.t/10|0)%2){
       if(typeof paintMapEntity==="function") paintMapEntity(cx,"huntingPulse",X,Y,C,{pal});
       else { cx.fillStyle="rgba(224,58,47,.28)"; cx.fillRect(X,Y,C-2,C-2); }
@@ -8870,7 +8986,7 @@ function rMap(){
     });
   }
   if(typeof paintMapChrome==="function") paintMapChrome(cx,W,H,a,m,null);
-  panel(16,28,210,H-64,"rgba(12,15,22,.94)","#262c3b","rgba(34,211,238,.06)",10);
+  panel(16,28,210,H-40,"rgba(12,15,22,.94)","#262c3b","rgba(34,211,238,.06)",10);
   cx.save(); cx.beginPath(); cx.rect(20,32,202,150); cx.clip();
   drawFighterArt(a.hero,121,265,260,false); cx.restore();
   txt(FIGHTERS[a.hero].name,121,200,13,INK,"center",800);
@@ -8881,19 +8997,24 @@ function rMap(){
   txt("LEVEL",30,324,10.5,DIM,"left",700);
   txt("LV "+a.level+(pendingLv(a)>0?"  (+"+pendingLv(a)+" AT TEMPLE)":""),200,324,11.5,pendingLv(a)>0?GRN:INK,"right",700);
   txt("CARD POINTS",30,344,10.5,DIM,"left",700); txt(a.points,200,344,11.5,INK,"right",700);
-  txt("DECK",30,364,10.5,DIM,"left",700); txt(a.pool.length+" CARDS",200,364,11.5,INK,"right",700);
+  {
+    const addedN=(a.drafted&&a.drafted.length)||0;
+    const deckN=(a.pool?a.pool.length:0)+addedN;
+    txt(addedN?("DECK +"+addedN+" ADDED"):"DECK",30,364,11,addedN?GOLD:DIM,"left",700);
+    txt(deckN+" CARDS",200,364,12,INK,"right",700);
+  }
   txt("PURSE",30,384,10.5,DIM,"left",700); txt(a.purse||0,200,384,11.5,GOLD,"right",700);
   txt("CONTINUES",30,404,10.5,DIM,"left",700); txt(a.continues,200,404,11.5,a.continues?GOLD:DIM,"right",700);
   drawGradeChip(30, 414, 180);
-  txt("LEGEND",30,450,12,AQUA,"left",800);
-  cx.fillStyle=RED; cx.beginPath(); cx.moveTo(34,460); cx.lineTo(44,472); cx.lineTo(24,472); cx.closePath(); cx.fill();
-  txt("FORCE",48,470,12,INK,"left",700);
-  cx.fillStyle=GOLD; cx.fillRect(112,458,12,12); txt("RIVAL",128,470,12,INK,"left",700);
-  cx.fillStyle=GRN; cx.fillRect(28,478,12,12); txt("TEMPLE",48,488,12,INK,"left",700);
+  txt("LEGEND",30,466,12,AQUA,"left",800);
+  cx.fillStyle=RED; cx.beginPath(); cx.moveTo(34,476); cx.lineTo(44,488); cx.lineTo(24,488); cx.closePath(); cx.fill();
+  txt("FORCE",48,486,12,INK,"left",700);
+  cx.fillStyle=GOLD; cx.fillRect(112,474,12,12); txt("RIVAL",128,486,12,INK,"left",700);
+  cx.fillStyle=GRN; cx.fillRect(28,494,12,12); txt("TEMPLE",48,504,12,INK,"left",700);
   cx.strokeStyle="#e5e7eb"; cx.lineWidth=2;
-  cx.beginPath(); cx.moveTo(118,478); cx.lineTo(126,490); cx.lineTo(110,490);
+  cx.beginPath(); cx.moveTo(118,494); cx.lineTo(126,506); cx.lineTo(110,506);
   cx.closePath(); cx.stroke(); cx.lineWidth=1;
-  txt("PATROL",128,488,12,INK,"left",700);
+  txt("PATROL",128,504,12,INK,"left",700);
   const hunted=m.foes.filter(o=>!o.done&&o.hunting).length;
   txt(hunted?hunted+" CLOSING IN":LG("b","PAUSE")+"   "+LG("y","DOSSIER"),121,506,12,hunted?RED:INK,"center",hunted?800:700);
   // Dedicated Live Target & Hazard Telemetry HUD (x: 716..944, y: 28..504)
@@ -8913,7 +9034,7 @@ function rMap(){
     panel(730, 106, 200, 126, "rgba(16,21,32,.9)", targetFoe.hunting ? RED : "#283042", null, 6);
     txt(targetFoe.hunting ? "HUNTING TARGET" : "STAGE RIVAL", 830, 122, 9.5, targetFoe.hunting ? RED : GOLD, "center", 800);
     const tfId = targetFoe.boss ? BOSS_ID : (targetFoe.tf ? targetFoe.art : targetFoe.id);
-    drawPortrait(tfId, 742, 134, 44, 44, false);
+    drawPortrait(tfId, 742, 134, 44, 44, false, targetFoe.tf?PATROL_FACE:"");
     const foeLabel = targetFoe.boss ? "SUPREME BOSS" : foeName(targetFoe);
     txt(foeLabel, 794, 150, 10.5, INK, "left", 800);
     txt("LV " + targetFoe.lv + " \u00B7 DANGER", 794, 168, 11, "#e5e7eb", "left", 700);
@@ -8979,7 +9100,7 @@ function openShop(a,field){
 /* The gym between stages. Money is the one resource that carries a decision
    forward: everything here competes with everything else, and with saving. */
 function rShop(){
-  paintFrostedModalBackdrop(cx, W, H, "THE GYM", G.adv.stage ? (G.shopField ? "ON THE FIELD, " + ((G.adv.map && G.adv.map.steps) || 0) + " STEPS LEFT OUTSIDE" : "STAGE " + G.adv.stage + " - SPEND IT OR SAVE IT") : "SPEND IT OR SAVE IT", GOLD);
+  paintFrostedModalBackdrop(cx, W, H, "THE GYM", G.adv.stage ? (G.shopField ? "ON THE FIELD, " + ((G.adv.map && G.adv.map.steps) || 0) + " STEPS LEFT OUTSIDE" : "STAGE " + G.adv.stage + " - SPEND IT OR SAVE IT") : "SPEND IT OR SAVE IT", GOLD, "#1a1208");
   panel(W-250,36,220,40,"rgba(10,11,14,.9)",GOLD);
   txt("PURSE",W-232,54,10,DIM,"left",700);
   txt(G.adv.purse,W-48,60,20,GOLD,"right",800);
@@ -9073,7 +9194,7 @@ function rDraft(){
     panel(ox+i*(cw+gap),120,cw,236,on?"rgba(34,211,238,.12)":"rgba(10,11,14,.9)",on?AQUA:"#252831");
     const x=ox+i*(cw+gap)+cw/2;
     txt(disc?disc.name.toUpperCase():"BASIC",x,146,9.5,mine?GOLD:AQUA,"center",700);
-    txt(mine?"YOUR ART":"CROSS-TRAINING",x,162,8.5,mine?"#7a6428":"#3f7f8f","center",700);
+    txt(mine?"YOUR ART":"CROSS-TRAINING",x,164,12,mine?"#f6e2a8":"#7ee7f7","center",800);
     // the name, wrapped so long technique names stay readable
     const words=tq.name.split(" "); let l1=words[0], l2="";
     words.slice(1).forEach(w=>{ if((l1+" "+w).length<=16&&!l2) l1+=" "+w; else l2+=(l2?" ":"")+w; });
@@ -9226,7 +9347,7 @@ function rBrief(){
   drawDifficultyBadge(W/2-80,24,160,24);
   drawFighterArt(a.hero, 240, 520, 400, false);
   const oppFid=f.boss?BOSS_ID:(f.tf?f.art:f.id);
-  drawFighterArt(oppFid, 720, 520, 400, true, ringSilhouette(f));
+  drawFighterArt(oppFid, 720, 520, 400, true, ringSilhouette(f), 1, 0, 0, f.tf?PATROL_FACE:"");
   txt("VS",W/2,280,54,RED,"center",800,true);
   txt(FIGHTERS[a.hero].name,240,70,16,INK,"center",800);
   /* the banked meter rides the hero's own line rather than taking a row: the
@@ -9239,10 +9360,12 @@ function rBrief(){
   }
   const oname=foeName(f);
   txt(oname,720,70,16,f.boss?RED:INK,"center",800);
+  const lessonNow=lessonFightOf({fromAdv:true});
   const ohp=f.boss?Math.round((150+ng*45)*dm.hp)
         :f.tf?Math.round((40+a.stage*10+ng*12)*dm.hp)
         :Math.round((85+a.stage*14+ng*18)*dm.hp);
-  txt((f.boss?"":"LV "+f.lv+"  -  ")+ohp+" HP"+(f.boss?" - 5 SEALED CARDS":""),720,92,11,DIM,"center",600);
+  const showHp=lessonNow?Math.max(ohp,110):ohp;
+  txt((f.boss?"":"LV "+f.lv+"  -  ")+showHp+" HP"+(f.boss?" - 5 SEALED CARDS":""),720,92,12,"#e8eaee","center",600);
   if(false)
     txt("RIVAL - WIN TO UNLOCK"+((SAVE.defeats[f.id]||0)>0?" (BEATEN "+SAVE.defeats[f.id]+"x)":""),720,112,10.5,GOLD,"center",700);
   /* what the field already put on you, read out before you accept the fight */
@@ -9252,8 +9375,10 @@ function rBrief(){
   }
   if(G.brief.ambush) txt("AMBUSHED - THEY GET THE JUMP ON YOU",W/2,132,12,RED,"center",800);
   /* the patrol's terms, stated before the bell rather than discovered at it */
-  if(f.tf) txt("ONE EXCHANGE - WHOEVER TAKES THE WORSE OF IT IS FINISHED",
-               W/2,G.brief.ambush?116:132,12,AQUA,"center",800);
+  if(f.tf) txt(lessonNow
+               ?"A LESSON - READ THE TELL, ANSWER IT, THEN HIT THE WINDOW"
+               :"ONE EXCHANGE - WHOEVER TAKES THE WORSE OF IT IS FINISHED",
+               W/2,G.brief.ambush?116:132,13,AQUA,"center",800);
   /* THE BRIEF REMEMBERS. Inside a run the nemesis is the man who beat you this
      run; across runs he is the man who ENDED the last one, and SAVE.nem carries
      the record between you. Both are the same flag on the run object, so this is
@@ -9337,7 +9462,7 @@ function rangeStrip(d){
   RANGE_ORDER.forEach((r,i)=>{
     const x=ox+i*(w+gap), on=r===d.range;
     panel(x,104,w,22, on?"rgba(34,211,238,.20)":"rgba(10,13,18,.82)", on?AQUA:"#262c3b", on?"rgba(34,211,238,.25)":null, 6);
-    txt(RANGE_LABEL[r],x+w/2,119,10,on?AQUA:"#6b7280","center",on?800:600);
+    txt(RANGE_LABEL[r],x+w/2,119,12,on?AQUA:"#d1d5db","center",on?800:600);
   });
   const mine=homeRanges(d.p.discs);
   txt(describePosition(d),W/2,152,10.5,d.cornered==="p"?RED:(d.cornered==="e"?GRN:DIM),"center",800);
@@ -9456,7 +9581,7 @@ function techRow(d,tech,x,y,w,on,side,note){
      which is the only thing standing between it and being thrown. */
   const hint=(side===d.p&&!d.hotseat)?intentHint(d,side,tech):null;
   if(note) txt(note.text,x+232,y,9,note.color||DIM,"left",800);
-  else if(hint) txt(hint.note,x+232,y,8.5,hint.edge>0?GRN:"#c96a5a","left",800);
+  else if(hint) txt(hint.note,x+232,y,12,hint.edge>0?GRN:(hint.edge<0?"#fecdd3":"#e5e7eb"),"left",800);
   else { const disc=DISCIPLINES[tech.disc];
          txt(disc?disc.name:"RINGCRAFT",x+232,y,9,on?DIM:"#5d626c","left",600); }
   cx.beginPath(); cx.arc(x+w-238,y-4,4,0,7); cx.fillStyle=col; cx.fill();
@@ -9485,10 +9610,10 @@ function techRow(d,tech,x,y,w,on,side,note){
    twelve-pick draft scrolling cleanly inside the same panel. */
 const CMD_ROWS=5;
 function drawCommand(d,side,label){
-  panel(16,398,W-32,H-406,"rgba(8,9,11,.92)","#252831");
+  panel(16,368,W-32,H-376,"rgba(8,9,11,.92)","#252831");
   const added=(side===d.p&&d.handNote&&d.handNote.name)
     ?("ADDED TO YOUR HAND: "+d.handNote.name):null;
-  txt(added||label,30,414,added?13:12,added?GOLD:INK,"left",800);
+  txt(fitLine(added||label, 700, added?14:12, 800),30,386,added?14:12,added?GOLD:INK,"left",800);
   const tabs=cmdTabs(d,side), tabIx=cmdTabIx(d,side), tab=tabs[tabIx].key;
   const bag=(side===d.p&&bagOpen(d))?(G.adv.corner||[]):null;
   const bagReady=bag?bag.some(id=>bagLit(d,CORNER_ITEMS[id])):false;
@@ -9511,10 +9636,10 @@ function drawCommand(d,side,label){
                       : t.key==="GRAPPLE" ? "#c084fc"
                       : isBag ? "#38bdf8" : "#94a3b8";
       cx.fillStyle=fillCol;
-      cx.fillRect(tx,401,tw,18);
+      cx.fillRect(tx,396,tw,16);
       cx.strokeStyle=borderCol;
       cx.lineWidth=1.2;
-      cx.strokeRect(tx,401,tw,18);
+      cx.strokeRect(tx,396,tw,16);
     }
     const txtCol = on ? (t.key==="STRIKE" ? "#fca5a5"
                        : t.key==="GUARD" ? "#a5f3fc"
@@ -9522,8 +9647,8 @@ function drawCommand(d,side,label){
                        : t.key==="GRAPPLE" ? "#e9d5ff"
                        : isBag ? AQUA : INK)
                       : (isBag?(bagReady?"#3f8fa0":"#4a6a72"):(dead?"#5d626c":"#8d929b"));
-    txt(cap,tx+tw/2,414,10,txtCol,"center",800);
-    hot(tx,401,tw,18,
+    txt(cap,tx+tw/2,408,11,txtCol,"center",800);
+    hot(tx,396,tw,16,
         ()=>{ if(d.cmdCat!==i){ d.cmdCat=i; d.cmdSel=0; d.cmdKey=null; d.cmdScroll=0; } },
         /* clicking a filter must never commit an attack, so a tab click is
            hover and nothing else - the bag is the one tab with an action */
@@ -9566,7 +9691,7 @@ function drawCommand(d,side,label){
     if(focus<d.cmdScroll) d.cmdScroll=focus;
     if(focus>=d.cmdScroll+CMD_ROWS) d.cmdScroll=focus-CMD_ROWS+1;
     d.cmdScroll=Math.max(0,Math.min(d.cmdScroll,Math.max(0,list.length-CMD_ROWS)));
-    if(list.length>CMD_ROWS) txt((focus+1)+" / "+list.length,596,414,9.5,DIM,"left",600);
+    if(list.length>CMD_ROWS) txt((focus+1)+" / "+list.length,W-40,386,12,"#d5dbe3","right",700);
     if(typeof CardRenderer!=="undefined" && typeof CardRenderer.paintCardHand==="function" && !SAVE.dataDeck){
       const visibleTechs=list.slice(d.cmdScroll, d.cmdScroll+CMD_ROWS);
       const cardIds=visibleTechs.map(tq=>tq.id);
@@ -9597,17 +9722,16 @@ function drawCommand(d,side,label){
           fit:fit>=1?"good":fit>=.7?"ok":"bad",
           first:mine?(forecastFirst(d,side,tq)>0?1:forecastFirst(d,side,tq)<0?-1:0):0,
           stam:st, affordable:st<=side.stam,
-          note:hint?((d.lessonFight?(hint.edge>0?"GOOD. ":hint.edge<0?"BAD. ":""):"")+hint.note):null,
-          noteColor:hint?(hint.edge>0?GRN:"#c96a5a"):null
+          note:hint?(lessonMark(d,hint)+hint.note):null,
+          noteColor:hint?(hint.edge>0?GRN:(hint.edge<0?"#fecdd3":"#e5e7eb")):null
         };
       });
-      const handBoxes=CardRenderer.paintCardHand(cx, undefined, 420, cardIds, selInHand, {
-        cardWidth:124, cardHeight:98, gap:16, curved:true, hotkeys:true,
-        /* the hand sits at 420 inside the 398-532 panel; the default 38px
-           selection lift pushed the chosen card up into the y-band the TELL /
-           READ banner owns (356-396) and covered the exact line a spent focus
-           point had just paid for. 20 keeps the lift readable and clear of it. */
-        live:live, liftPx:20
+      const handBoxes=CardRenderer.paintCardHand(cx, undefined, 422, cardIds, selInHand, {
+        cardWidth:124, cardHeight:92, gap:14, curved:false, hotkeys:true,
+        /* Flat and barely lifted, so the hand stays under the category
+           tabs and above the hint line, and the learned-card caption
+           above the first card stays whole. */
+        live:live, liftPx:4, selectedScale:1.02, hoverLiftPx:2
       });
       handBoxes.forEach(hb=>{
         const ix=d.cmdScroll+hb.index;
@@ -9729,7 +9853,7 @@ function rTapeCard(d){
 
   bgFill("#101318","#07080a");
   drawFighterArt(d.p.fid,150,470,300,false);
-  drawFighterArt(d.boss?BOSS_ID:d.e.fid,810,470,300,true,ringSilhouette(d));
+  drawFighterArt(d.boss?BOSS_ID:d.e.fid,810,470,300,true,ringSilhouette(d),1,0,0,d.tf?PATROL_FACE:"");
   cx.fillStyle="rgba(5,6,8,.72)"; cx.fillRect(0,0,W,H);
 
   txt("VS",W/2,46,26,RED,"center",800,true);
@@ -9872,7 +9996,8 @@ function rDuel(){
   drawFighterArt(d.p.fid, 200+entOff("p")+shake(d.p)+lunge(d.p,1)+pa.dx, 392+pa.dy, 300*pa.scale,
                  false, false, entAl("p",pa.alpha), entFl("p",Math.max(d.p.flash,pa.flash||0)), pa.rot||0);
   drawFighterArt(d.boss?BOSS_ID:d.e.fid, 760+entOff("e")+shake(d.e)+lunge(d.e,-1)+ea.dx, 392+ea.dy, 300*ea.scale,
-                 true, ringSilhouette(d), entAl("e",ea.alpha), entFl("e",Math.max(d.e.flash,ea.flash||0)), ea.rot||0);
+                 true, ringSilhouette(d), entAl("e",ea.alpha), entFl("e",Math.max(d.e.flash,ea.flash||0)), ea.rot||0,
+                 d.tf?PATROL_FACE:"");
   
   if(motionOn()&&d.fx&&(G.t%5===0)&&typeof spectacleSpawnStatusAura==="function"){
     const pfx=200+entOff("p")+shake(d.p)+lunge(d.p,1)+pa.dx, pfy=392+pa.dy;
@@ -9954,9 +10079,9 @@ function rDuel(){
 
     // Turbo Speed Toggle Chip
     const turboOn = !!d.turbo;
-    const tbx = W - 116, tby = 12, tbw = 104, tbh = 24;
-    panel(tbx, tby, tbw, tbh, turboOn ? "rgba(245,158,11,.22)" : "rgba(10,13,20,.85)", turboOn ? "#f59e0b" : "#374151", null, 6);
-    txt(turboOn ? "⏩ TURBO [T]" : "▶ NORMAL [T]", tbx + tbw / 2, tby + 16, 10, turboOn ? "#f59e0b" : "#9ca3af", "center", 800);
+    const tbx = W/2 - 52, tby = 58, tbw = 104, tbh = 22;
+    panel(tbx, tby, tbw, tbh, turboOn ? "rgba(245,158,11,.22)" : "rgba(10,13,20,.92)", turboOn ? "#f59e0b" : "#374151", null, 6);
+    txt(turboOn ? "TURBO [T]" : "NORMAL [T]", tbx + tbw / 2, tby + 15, 12, turboOn ? "#f59e0b" : "#f4fdff", "center", 800);
     hot(tbx, tby, tbw, tbh, null, () => {
       d.turbo = !d.turbo;
       sPick();
@@ -10026,7 +10151,7 @@ function rDuel(){
      ground: at six percent alpha over the ring the rope line used to read
      straight through the text like a strikethrough. */
   if((d.ph===D.CMD||d.ph===D.TECH||d.ph===D.CHAIN)&&!d.hotseat&&!d.noTell){
-    const bx=W/2-260, by=356, bw=520, bh=40;
+    const bx=W/2-280, by=328, bw=560, bh=34;
     if(d.readShown){
       const label=d.eSuper?(d.e.sig?d.e.sig.name:"SIGNATURE"):d.eTech.name;
       /* the technique name is the thing focus was spent on, so it gets the
@@ -10034,8 +10159,8 @@ function rDuel(){
          "READ - THEY THROW <name>" at this size overruns the band on the
          longest names in the technique table. */
       panel(bx,by,bw,bh,"rgba(26,19,6,.94)",GOLD);
-      txt("READ - THEY THROW",W/2,373,9.5,"#b08c3c","center",700);
-      txt(label,W/2,391,15,GOLD,"center",800);
+      txt("READ - THEY THROW",W/2,342,11,"#f6e2a8","center",700);
+      txt(label,W/2,358,14,GOLD,"center",800);
     } else {
       const it=intentFor(d);
       if(it){
@@ -10044,9 +10169,9 @@ function rDuel(){
            line the tell centres in the band instead of riding its top edge */
         const sell=d.p.focus>=1&&(d.ph===D.CMD||d.ph===D.TECH);
         panel(bx,by,bw,bh,"rgba(6,20,25,.92)","rgba(34,211,238,"+pulse+")");
-        txt("TELL - "+it.line,W/2,sell?377:384,14,AQUA,"center",800);
+        txt("TELL - "+it.line,W/2,sell?342:350,13,AQUA,"center",800);
         if(sell){
-          txt(LG("y","READ THE EXACT TECHNIQUE (1 FOCUS)"),W/2,391,9,"#5aa8bd","center",600);
+          txt(LG("y","READ THE EXACT TECHNIQUE (1 FOCUS)"),W/2,358,12,"#f4fdff","center",700);
           hot(bx,by,bw,bh,null,()=>onKey("y"));
         }
       }
@@ -10233,7 +10358,23 @@ function cursorTech(d){
   return list[cmdFocus(d,d.p,list)]||null;
 }
 function drawTeaching(d){
-  if(typeof Onboarding==="undefined"||d.hotseat||d.attract) return;
+  if(!d||d.hotseat||d.attract) return;
+  /* A lesson fight teaches the tell before any other card. The range
+     lesson used to cover this band for the whole first command phase. */
+  if(d.lessonFight){
+    const beat=teachBeat(d);
+    if(beat){
+      panel(W/2-310,268,620,44,"rgba(8,11,18,.94)",AQUA,null,6);
+      txt(beat.line,W/2,d.tellGrade?286:294,14,INK,"center",800);
+      if(d.tellGrade){
+        const good=d.tellGrade.indexOf("ANSWERED")===0;
+        const bad=d.tellGrade.indexOf("BAD")===0;
+        txt(d.tellGrade,W/2,306,13,good?GRN:(bad?RED:GOLD),"center",800);
+      }
+      return;
+    }
+  }
+  if(typeof Onboarding==="undefined") return;
   /* the range lesson is only true while the cursor is on a technique that
      does not belong to the range the fight is in - hand that over */
   const tech=cursorTech(d);
@@ -10271,28 +10412,15 @@ function drawTeaching(d){
     persist();
     d.lessonId=null;
   }
-  if(d.lessonFight){
-    const beat=teachBeat(d);
-    if(beat){
-      panel(W/2-310,312,620,40,"rgba(8,11,18,.94)",AQUA,null,6);
-      txt(beat.line,W/2,d.tellGrade?328:336,13,INK,"center",800);
-      if(d.tellGrade){
-        const good=d.tellGrade.indexOf("ANSWERED")===0;
-        const bad=d.tellGrade.indexOf("BAD")===0;
-        txt(d.tellGrade,W/2,346,12,good?GRN:(bad?RED:GOLD),"center",800);
-      }
-      return;
-    }
-  }
   const tip=Onboarding.coachTip(d,d.p,octx);
   if(tip&&tip.text){
     const tone=tip.tone==="urgent"?RED:tip.tone==="warn"?GOLD:tip.tone==="good"?GRN:AQUA;
     const t=String(tip.text).toUpperCase();
     /* a plate, because this sits over the arena floor and unbacked text at
        10px is unreadable against a lit canvas */
-    const w=Math.min(W-80,t.length*6.2+28);
-    panel(W/2-w/2,332,w,18,"rgba(8,11,18,.88)",tone,null,4);
-    txt(t,W/2,345,10,tone,"center",800);
+    const w=Math.min(W-80,t.length*7.2+28);
+    panel(W/2-w/2,300,w,22,"rgba(8,11,18,.92)",tone,null,4);
+    txt(t,W/2,316,13,tone,"center",800);
   }
 }
 function drawCoachNotes(y0){
@@ -11140,6 +11268,10 @@ function step(){
   // it actually draws, and after four seconds it stops waiting at all, so a
   // decode failure can never strand you on the loading screen.
   if(G.scene===S.LOAD && (artReady() || (loadedN>=4 && G.t>75) || G.t>240)){ G.scene=S.TITLE; focusArena(); }
+  if(G.scene!==G._kbdScene){
+    G._kbdScene=G.scene;
+    if(G.scene===S.SELECT||G.scene===S.HOW) focusArena();
+  }
   /* the cabinet fights itself when nobody is standing at it. attractTick runs
      unconditionally so the demo's own clock advances while the scene is DUEL;
      the else branch zeroes the idle counter on every screen but the title.

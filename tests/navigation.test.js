@@ -187,8 +187,8 @@ module.exports = function (h) {
        "on select X cycles difficulty, so B's key is ESC there", K.legendFor("b", "BACK", "SELECT"));
     ok(K.legendFor("diff", "DIFFICULTY", "SELECT") === "X - DIFFICULTY",
        "and the difficulty legend names only X there", K.legendFor("diff", "DIFFICULTY", "SELECT"));
-    ok(K.legendFor("diff", "DIFFICULTY", "TITLE") === "X / D - DIFFICULTY",
-       "while the title takes X or D", K.legendFor("diff", "DIFFICULTY", "TITLE"));
+    ok(K.legendFor("diff", "DIFFICULTY", "TITLE") === "X - DIFFICULTY",
+       "the title cycles difficulty with X, and D stays a movement key", K.legendFor("diff", "DIFFICULTY", "TITLE"));
     ok(K.legendFor("b", "BACK", "DUEL") === "B / X - BACK", "and in a fight X is back again", K.legendFor("b", "BACK", "DUEL"));
     ok(K.legendFor("y", "DOSSIER", "SELECT") === "Y / C - DOSSIER", "Y is C on the keyboard", K.legendFor("y", "DOSSIER", "SELECT"));
     /* the page helpers read the live scene */
@@ -204,6 +204,12 @@ module.exports = function (h) {
     ok(scene() === "SELECT" && A.G.sel !== sel0, "pressing the a key moves the cursor", scene() + " sel " + A.G.sel);
     press(K.arenaAction("z", "SELECT"));
     ok(scene() === "MAP", "pressing Z confirms the fighter", scene());
+    A.exec("SAVE=DEF_SAVE(); persist(); G.adv=null; G.duel=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0; setFocused(true);");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',preventDefault:function(){}})");
+    ok(scene() === "MAP", "Enter confirms the fighter the footer names", scene());
+    A.exec("SAVE=DEF_SAVE(); persist(); G.adv=null; G.duel=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0; setFocused(true);");
+    A.exec("onArenaKey({key:'NumpadEnter',code:'NumpadEnter',preventDefault:function(){}})");
+    ok(scene() === "MAP", "the numpad Enter confirms too", scene());
     /* the on-screen pad's key captions come from the same table */
     A.exec("G.scene=S.SELECT;");
     ok(K.arenaKeysFor("a", "SELECT")[0] === "Z" && K.arenaKeysFor("b", "SELECT")[0] === "B",

@@ -103,6 +103,18 @@ function intentHint(d, side, tech) {
     if (tech.cls === "GUARD" && f.indexOf("evade") >= 0) return { edge: 1, note: "SLIPS IT" };
     if (tech.cls === "GUARD") return { edge: 1, note: "SOAKS IT" };
     if (f.indexOf("takedown") >= 0) return { edge: 1, note: "CHANGES THE QUESTION" };
+    if (tech.cls === "STRIKE" && (tech.prio || 0) > 0) return { edge: 1, note: "BEATS IT IN" };
+    if (tech.cls === "STRIKE") return { edge: -1, note: "TRADES INTO IT" };
+  }
+  /* A man who is only changing range still has to be answered. Standing
+     there and swinging is the bad card. Stepping with him is the good one.
+     Without this branch the whole hand stays blank and the tell teaches
+     nothing. */
+  if (it.key === "MOVE") {
+    if (tech.cls === "SETUP" || f.indexOf("reposition") >= 0 || f.indexOf("circle") >= 0 || tech.moves || tech.shift)
+      return { edge: 1, note: "MOVE WITH THEM" };
+    if (tech.cls === "GUARD") return { edge: 1, note: "LET THEM RESET" };
+    if (tech.cls === "STRIKE") return { edge: -1, note: "SWINGS AT AIR" };
   }
   if (it.key === "GUARD") {
     if (tech.cls === "STRIKE" && tech.power >= 30) return { edge: -1, note: "SWINGS INTO A SHELL" };

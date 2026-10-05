@@ -39,18 +39,26 @@ function tonConfigForBuild() {
 
 let t = fs.readFileSync(path.resolve(__dirname, "..", "src", "page.template.html"), "utf8");
 const rom = fs.readFileSync(SP + "romdata.js", "utf8").trim();
-// Solifer was a non-human design and is off the roster - drop the dossier and
-// the artwork with it so nothing ships that the game no longer references.
+// The unused portrait stays in the art pack under a name the page can
+// draw, and the old name is removed so it does not ship. The dossier
+// goes entirely: there is no roster row for it.
 const CUT = ["Solifer"];
 function stripKeys(line, prefix) {
   const obj = JSON.parse(line.slice(prefix.length, line.lastIndexOf(";")));
   CUT.forEach((k) => { if (!(k in obj)) throw new Error("cannot cut missing key: " + k); delete obj[k]; });
   return prefix + JSON.stringify(obj) + ";";
 }
+function retargetArt(line, prefix) {
+  const obj = JSON.parse(line.slice(prefix.length, line.lastIndexOf(";")));
+  if (!obj.Solifer) throw new Error("cannot retarget missing patrol art");
+  obj.Patrol = obj.Solifer;
+  delete obj.Solifer;
+  return prefix + JSON.stringify(obj) + ";";
+}
 const bios =
   "/* Fighter dossiers. `a` is the 18 attributes in ATTR_KEYS order. */\n" +
   stripKeys(fs.readFileSync(SP + "bios.txt", "utf8").trim(), "const BIOS=");
-const art = stripKeys(fs.readFileSync(SP + "art.txt", "utf8").trim(), "const ART=");
+const art = retargetArt(fs.readFileSync(SP + "art.txt", "utf8").trim(), "const ART=");
 
 const SRC=require("path").resolve(__dirname,"..","src")+"/";
 const MODULE_ORDER=["data/roster-tune.js","data/disciplines.js","data/matchups.js","data/techniques.js","data/i18n.js",

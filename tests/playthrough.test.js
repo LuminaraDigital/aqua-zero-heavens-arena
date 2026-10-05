@@ -370,4 +370,96 @@ module.exports = function (h) {
     A.exec("onArenaKey({key:'Enter',preventDefault:function(){}})");
     ok(scene() === "MENU", "so Enter on the title works without a click", scene());
   }
+
+  section("new adventure over a finished career still teaches the first fight");
+  {
+    fresh();
+    A.exec("SAVE.rec.duels=12; SAVE.onboarding={done:true,seen:{l_range:1}}; persist();");
+    A.exec("G.scene=S.MENU; setFocused(true);");
+    ok(A.menuGoTo("adv") === true, "new adventure is on the menu");
+    A.exec("onArenaKey({key:'Enter',preventDefault:function(){}})");
+    ok(scene() === "SELECT", "confirming that row opens fighter select", scene());
+    A.exec("onArenaKey({key:'Enter',preventDefault:function(){}})");
+    ok(scene() === "MAP" && A.exec("G.adv&&G.adv.fights") === 0, "confirming Akin starts a new run", scene());
+    const opened = A.exec("(function(){ var m=G.adv.map; var f=null, best=1e9;" +
+      "m.foes.forEach(function(o){ if(o.done||!o.tf) return;" +
+      "var dist=Math.abs(o.x-m.px)+Math.abs(o.y-m.py); if(dist<best){ best=dist; f=o; } });" +
+      "if(!f) return null; G.brief={f:f}; G.scene=S.BRIEF; return true; })()");
+    ok(opened === true, "the first foe a new run meets is a patrol");
+    const brief = joined(cap(() => frames(1)));
+    ok(brief.indexOf("ONE EXCHANGE") < 0, "that brief does not call the fight one exchange", brief);
+    ok(brief.indexOf("A LESSON") >= 0 && brief.indexOf("READ THE TELL") >= 0,
+       "and it says the fight will teach the tell", brief);
+    A.exec("onArenaKey({key:'Enter',preventDefault:function(){}})");
+    ok(scene() === "DUEL" && A.exec("G.duel.lessonFight") === true, "confirming it starts a lesson", scene());
+    ok(A.exec("G.duel.oneShot") === false && A.exec("G.duel.e.hp") >= 110,
+       "the opponent survives the first exchange", A.exec("G.duel.e.hp"));
+    ok(A.exec("G.duel.ent&&G.duel.ent.banner") === "ADVENTURE",
+       "an adventure fight is billed as an adventure", A.exec("G.duel.ent&&G.duel.ent.banner"));
+    const marks = A.exec("lessonMark(G.duel,{edge:1,note:'x'})+'|'+lessonMark(G.duel,{edge:-1,note:'y'})");
+    ok(marks.indexOf("GOOD") >= 0 && marks.indexOf("BAD") >= 0, "cards are marked good or bad", marks);
+    A.exec("G.duel.ph=D.CMD; G.duel.turn=0; G.scene=S.DUEL;");
+    const drawn = joined(cap(() => frames(1)));
+    ok(drawn.indexOf("READ THE TELL") >= 0, "the tell beat is on screen for that first fight", drawn);
+    ok(drawn.indexOf("RANGE DECIDES") < 0, "the range card does not cover the tell", drawn);
+  }
+
+  section("difficulty is never on a movement key");
+  {
+    fresh();
+    A.exec("G.scene=S.TITLE; SAVE.diff=2; setFocused(true);");
+    A.exec("onArenaKey({key:'ArrowLeft',preventDefault:function(){}})");
+    ok(A.exec("SAVE.diff") === 1 && scene() === "TITLE", "left arrow steps difficulty down and stays on the title", A.exec("SAVE.diff"));
+    A.exec("onArenaKey({key:'d',preventDefault:function(){}})");
+    A.exec("onArenaKey({key:'D',preventDefault:function(){}})");
+    ok(A.exec("SAVE.diff") === 1 && scene() === "TITLE", "D does not change difficulty and does not open how to play");
+    A.exec("onArenaKey({key:'ArrowRight',preventDefault:function(){}})");
+    ok(A.exec("SAVE.diff") === 2, "right arrow steps it back up", A.exec("SAVE.diff"));
+    keyDoes("d", "TITLE", "right");
+    keyDoes("d", "BRIEF", "right");
+    keyDoes("d", "MAP", "right");
+    keyDoes("ArrowLeft", "TITLE", "diffDown");
+    A.exec("G.adv=newAdv(0,0); newField(G.adv); G.adv.fights=2; SAVE.diff=1;");
+    A.exec("G.brief={f:G.adv.map.foes[0]}; G.scene=S.BRIEF; setFocused(true);");
+    A.exec("onArenaKey({key:'d',preventDefault:function(){}})");
+    A.exec("onArenaKey({key:'D',preventDefault:function(){}})");
+    ok(A.exec("SAVE.diff") === 1 && scene() === "BRIEF", "walking into a fight on D does not retune the bout", scene());
+  }
+
+  section("how to play, the field, and the deck say what they do");
+  {
+    fresh();
+    A.exec("G.scene=S.HOW; G.prevScene=S.MENU; G.how=3; setFocused(true);");
+    A.exec("onArenaKey({key:'b',preventDefault:function(){}})");
+    ok(scene() === "MENU", "B leaves how to play", scene());
+    ok(PAGE.indexOf('addEventListener("keydown",onArenaKey,true)') >= 0,
+       "keys are taken before a focused button can eat them");
+    A.exec("G.adv=newAdv(0,0); newField(G.adv);");
+    ok(A.exec("(function(){ var m=G.adv.map; m.seen[14][14]=false;" +
+              "return foeShown(m,{done:false,hunting:true,x:14,y:14})===true" +
+              " && foeShown(m,{done:false,hunting:false,x:14,y:14})===false; })()") === true,
+       "a foe who is closing in is drawn through the fog");
+    const capLine = A.exec("fieldRouteCaption(G.adv.map)");
+    ok(capLine.indexOf("STEPS") >= 0 && capLine.indexOf("STEPS") < capLine.indexOf("NEXT:"),
+       "the step count leads the route line, ahead of the part the buttons cover", capLine);
+    const pool = A.exec("G.adv.pool.length");
+    A.exec("G.adv.drafted.push('learned'); G.scene=S.MAP;");
+    const deck = joined(cap(() => frames(1)));
+    ok(deck.indexOf((pool + 1) + " CARDS") >= 0, "learning a technique changes the deck count", deck);
+    ok(deck.indexOf("DECK +1 ADDED") >= 0, "and the field says it was added", deck);
+    const faces = A.exec("(function(){ var m=G.adv.map;" +
+      "var rival=m.foes.filter(function(o){return !o.tf;})[0];" +
+      "var p=m.foes.filter(function(o){return o.tf;})[0];" +
+      "p.art=rival.id; p.art2=G.adv.hero; clearPatrolFaces(m.foes, G.adv.hero);" +
+      "var named={}; named[G.adv.hero]=1;" +
+      "m.foes.forEach(function(o){ if(!o.tf) named[o.id]=1; });" +
+      "return m.foes.filter(function(o){return o.tf&&named[o.art];}).length; })()");
+    ok(faces === 0, "a patrol does not keep a kit that belongs to someone on this field", faces);
+    ok(PAGE.indexOf('PATROL_FACE="Patrol"') >= 0 && !/solifer/i.test(PAGE),
+       "patrols draw a portrait that is not a named roster fighter");
+    ok(A.exec("divLabel('Middleweight')") === "Middle"
+       && A.exec("divLabel('Welterweight')") === "Welter"
+       && A.exec("divLabel('Light Heavyweight')") === "Lt Heavy",
+       "weight classes are shortened on a word, not sliced mid-letter");
+  }
 };

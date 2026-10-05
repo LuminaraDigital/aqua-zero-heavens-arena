@@ -179,7 +179,7 @@ const ENTRANCE_CONFIG = {
 
   /* the flag that decides the billing. First match in `order` wins, so a
      boss who is also ranked is billed as the boss. */
-  order: ["boss", "nemesis", "grudge", "daily", "survival", "ranked", "hotseat"],
+  order: ["boss", "nemesis", "grudge", "daily", "survival", "ranked", "hotseat", "adventure"],
 
   flavours: {
     /* the only flavour that buys extra frames. A title fight is allowed
@@ -199,6 +199,8 @@ const ENTRANCE_CONFIG = {
                   banner: "RANKED BOUT", add: {} },
     hotseat:    { key: "hotseat",    billing: 0.40, role: "challenger",
                   banner: "TWO PLAYERS", add: {} },
+    adventure:  { key: "adventure",  billing: 0.36, role: "challenger",
+                  banner: "ADVENTURE", add: {} },
     exhibition: { key: "exhibition", billing: 0.35, role: "challenger",
                   banner: "EXHIBITION", add: {} },
   },
@@ -234,7 +236,7 @@ function newEntrance(opts) {
   const flags = {
     boss: !!opts.boss, ranked: !!opts.ranked, survival: !!opts.survival,
     nemesis: !!opts.nemesis, grudge: !!opts.grudge, daily: !!opts.daily,
-    hotseat: !!opts.hotseat,
+    hotseat: !!opts.hotseat, adventure: !!opts.adventure,
   };
   let key = "exhibition";
   for (let i = 0; i < C.order.length; i++) {
