@@ -585,19 +585,52 @@ var CardRenderer = (function () {
     cx.textBaseline = "middle";
     cx.fillText(catChipBadge, x + 16, y + 3 + bannerH / 2);
 
-    // Discipline / Archetype Name in Header
-    cx.fillStyle = "#ffffff";
-    cx.font = "bold 9.5px 'Trebuchet MS', Bahnschrift, sans-serif";
-    cx.textAlign = "left";
-    var maxDiscW = w - (lessonWord ? 72 : 40);
-    var fittedDisc = isSig ? "★ SPECIAL MOVE" : (isGuard ? "DEFENSE / GUARD" : discName);
-    if (cx.measureText(fittedDisc).width > maxDiscW) {
-      fittedDisc = fittedDisc.slice(0, 11) + "..";
+    // Discipline name and the GOOD/BAD badge share the banner.
+    // A mid-word clip ("MUAY TI..", "TAEKWO..") is worse than a real short form.
+    var badgeW = lessonWord ? 42 : 0;
+    var discShort = {
+      "MUAY THAI": "MUAY",
+      "TAEKWONDO": "TKD",
+      "BRAZILIAN JIU-JITSU": "BJJ",
+      "KICKBOXING": "KICKBOX",
+      "SHOTOKAN KARATE": "SHOTOKAN",
+      "KYOKUSHIN KARATE": "KYOKUSHIN",
+      "KENPO KARATE": "KENPO",
+      "SUBMISSION GRAPPLING": "SUB",
+      "JIU-JITSU": "JIU-JITSU",
+      "WRESTLING": "WRESTLE",
+      "GRAPPLING": "GRAPPLE"
+    };
+    var fittedDisc = isSig ? "SPECIAL" : (isGuard ? "GUARD" : discName);
+    var maxDiscW = w - 34 - (badgeW ? badgeW + 8 : 8);
+    function discWidth(label, size) {
+      cx.font = "bold " + size + "px 'Trebuchet MS', Bahnschrift, sans-serif";
+      return cx.measureText(label).width;
     }
+    var discSize = 9;
+    if (discWidth(fittedDisc, discSize) > maxDiscW) discSize = 8;
+    if (discWidth(fittedDisc, discSize) > maxDiscW && discShort[fittedDisc]) fittedDisc = discShort[fittedDisc];
+    if (discWidth(fittedDisc, discSize) > maxDiscW) {
+      var parts = fittedDisc.split(" ");
+      if (parts.length > 1 && discWidth(parts[0], discSize) <= maxDiscW) fittedDisc = parts[0];
+    }
+    if (discWidth(fittedDisc, discSize) > maxDiscW) {
+      var kept = "";
+      var chars = Array.from(fittedDisc);
+      for (var ci = 0; ci < chars.length; ci++) {
+        var trial = kept + chars[ci];
+        if (discWidth(trial, discSize) > maxDiscW) break;
+        kept = trial;
+      }
+      fittedDisc = kept;
+    }
+    cx.fillStyle = "#ffffff";
+    cx.font = "bold " + discSize + "px 'Trebuchet MS', Bahnschrift, sans-serif";
+    cx.textAlign = "left";
+    cx.textBaseline = "middle";
     cx.fillText(fittedDisc, x + 30, y + 3 + bannerH / 2);
 
     if (lessonWord) {
-      var badgeW = 52;
       var badgeH = Math.max(16, bannerH - 2);
       var badgeX = x + w - badgeW - 4;
       var badgeY = y + 4;
@@ -607,7 +640,7 @@ var CardRenderer = (function () {
       cx.lineWidth = 1.5;
       cx.strokeRect(badgeX, badgeY, badgeW, badgeH);
       cx.fillStyle = lessonWord === "GOOD" ? "#ecfdf5" : "#fff1f2";
-      cx.font = "bold 13px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.font = "bold 11px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.textAlign = "center";
       cx.textBaseline = "middle";
       cx.fillText(lessonWord, badgeX + badgeW / 2, badgeY + badgeH / 2);
@@ -627,7 +660,7 @@ var CardRenderer = (function () {
       if (words.length > 1) {
         fittedName = words[0] + " " + words[1].slice(0, 4) + "..";
       } else {
-        fittedName = fittedName.slice(0, 11) + "..";
+        fittedName = Array.from(fittedName).slice(0, 11).join("") + "..";
       }
     }
     cx.fillText(fittedName, x + 6, nameY);

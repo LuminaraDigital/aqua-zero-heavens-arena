@@ -92,9 +92,11 @@ function mapPalette(ogre) {
       floorAlt: "#2c3a50",
       floorHi: "#3d4e68",
       floorLo: "#152033",
-      wall: "#3d4c63",
-      wallHi: "#8b9bb3",
-      wallLo: "#1c2636",
+      /* Walls are darker than the floor. A light grey edge read as an
+         open tile you could step on, and Right did nothing. */
+      wall: "#121820",
+      wallHi: "#1c2636",
+      wallLo: "#0c1016",
       fog: "#141820",
       fogGrain: "rgba(120,140,170,.28)",
     exit: "#d8a24a",
@@ -119,10 +121,8 @@ function mapPalette(ogre) {
 function mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, t) {
   cx.fillStyle = pal.fog;
   cx.fillRect(X, Y, cw, ch);
-  cx.strokeStyle = "rgba(148,163,184,.45)";
-  cx.lineWidth = 1;
-  cx.strokeRect(X + 0.5, Y + 0.5, cw - 1, ch - 1);
-  /* soft patterned fog: a few alpha dots, not a flat black slab */
+  /* soft patterned fog: a few alpha dots, not a flat black slab.
+     No grey stroke: that outline read as a tile you could walk onto. */
   const pulse = 0.85 + 0.15 * Math.sin(mapNum(t) * 0.04 + x * 0.7 + y * 0.5);
   cx.fillStyle = pal.fogGrain;
   const dots = 3 + ((x * 3 + y * 5) & 1);
@@ -156,13 +156,12 @@ function mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y) {
 function mapPaintWallCell(cx, X, Y, cw, ch, pal) {
   cx.fillStyle = pal.wall;
   cx.fillRect(X, Y, cw, ch);
-  /* recessed core */
+  /* recessed core. The edge is a hairline, darker than the floor,
+     so a wall cannot be mistaken for a highlighted empty tile. */
   cx.fillStyle = pal.wallLo;
-  cx.fillRect(X + 3, Y + 4, cw - 6, ch - 7);
-  /* top highlight edge - the one read that sells "solid" */
+  cx.fillRect(X + 4, Y + 5, cw - 8, ch - 9);
   cx.fillStyle = pal.wallHi;
-  cx.fillRect(X + 1, Y + 1, cw - 2, 2);
-  cx.fillRect(X + 1, Y + 1, 1, ch - 3);
+  cx.fillRect(X + 1, Y + 1, cw - 2, 1);
 }
 
 function mapPaintVignetteEdge(cx, X, Y, cw, ch, pal, m, x, y) {

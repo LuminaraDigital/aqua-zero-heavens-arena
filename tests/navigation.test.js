@@ -227,4 +227,37 @@ module.exports = function (h) {
     ok(K.legendFor("a", "CONFIRM", "SELECT") === "(A) - CONFIRM", "a pad legend is the pad glyph", K.legendFor("a", "CONFIRM", "SELECT"));
     K.setInputDevice("keyboard");
   }
+
+  section("the first confirm after New Adventure starts the run");
+  {
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; G._kbdScene=S.MENU; setFocused(true); focusArena.dom=0; G._focusWait=false;");
+    A.exec("menuGoTo('adv'); onKey('a');");
+    ok(scene() === "SELECT", "New Adventure arrives on fighter select", scene());
+    frames(2);
+    ok((A.exec("focusArena.dom||0")) === 0, "an arena that already has the keyboard is not refocused", A.exec("focusArena.dom||0"));
+    A.exec("onArenaKey({key:'Enter',code:'Enter',preventDefault:function(){}})");
+    ok(scene() === "MAP", "the first Enter starts the run", scene());
+    A.exec("onArenaKeyUp({key:'Enter'});");
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G._kbdScene=S.MENU; setFocused(true);");
+    A.exec("menuGoTo('adv'); onKey('a');");
+    frames(1);
+    A.exec("onArenaKey({key:'z',code:'KeyZ',preventDefault:function(){}})");
+    ok(scene() === "MAP", "the first Z starts the run too", scene());
+    A.exec("onArenaKeyUp({key:'z'});");
+  }
+
+  section("X on the menu changes the difficulty the badge names");
+  {
+    A.exec("SAVE=DEF_SAVE(); persist(); SAVE.diff=3; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; setFocused(true);");
+    ok(A.Keybindings.arenaAction("x", "MENU") === "diff", "X is the difficulty key on the menu");
+    ok(A.Keybindings.legendFor("diff", "DIFFICULTY", "MENU") === "X - DIFFICULTY",
+       "the menu badge can honestly say X", A.Keybindings.legendFor("diff", "DIFFICULTY", "MENU"));
+    const before = A.exec("SAVE.diff");
+    A.exec("onArenaKey({key:'x',code:'KeyX',preventDefault:function(){}})");
+    A.exec("onArenaKeyUp({key:'x'});");
+    ok(A.exec("SAVE.diff") !== before, "pressing X cycles the grade", A.exec("SAVE.diff"));
+    ok(A.exec("diff().name") === "ROOKIE", "HEAVENS CHAMPION wraps to ROOKIE", A.exec("diff().name"));
+    const drawn = A.exec("(function(){ globalThis.__txt=txt; globalThis.__cap=[]; txt=function(){ __cap.push(String(arguments[0])); return __txt.apply(this, arguments); }; G.scene=S.MENU; render(); var s=__cap.join(' '); txt=__txt; return s; })()");
+    ok(drawn.indexOf("[X]") >= 0 || drawn.indexOf("X - DIFFICULTY") >= 0, "the menu names X where it changes difficulty", drawn);
+  }
 };

@@ -18773,19 +18773,52 @@ var CardRenderer = (function () {
     cx.textBaseline = "middle";
     cx.fillText(catChipBadge, x + 16, y + 3 + bannerH / 2);
 
-    // Discipline / Archetype Name in Header
-    cx.fillStyle = "#ffffff";
-    cx.font = "bold 9.5px 'Trebuchet MS', Bahnschrift, sans-serif";
-    cx.textAlign = "left";
-    var maxDiscW = w - (lessonWord ? 72 : 40);
-    var fittedDisc = isSig ? "\u2605 SPECIAL MOVE" : (isGuard ? "DEFENSE / GUARD" : discName);
-    if (cx.measureText(fittedDisc).width > maxDiscW) {
-      fittedDisc = fittedDisc.slice(0, 11) + "..";
+    // Discipline name and the GOOD/BAD badge share the banner.
+    // A mid-word clip ("MUAY TI..", "TAEKWO..") is worse than a real short form.
+    var badgeW = lessonWord ? 42 : 0;
+    var discShort = {
+      "MUAY THAI": "MUAY",
+      "TAEKWONDO": "TKD",
+      "BRAZILIAN JIU-JITSU": "BJJ",
+      "KICKBOXING": "KICKBOX",
+      "SHOTOKAN KARATE": "SHOTOKAN",
+      "KYOKUSHIN KARATE": "KYOKUSHIN",
+      "KENPO KARATE": "KENPO",
+      "SUBMISSION GRAPPLING": "SUB",
+      "JIU-JITSU": "JIU-JITSU",
+      "WRESTLING": "WRESTLE",
+      "GRAPPLING": "GRAPPLE"
+    };
+    var fittedDisc = isSig ? "SPECIAL" : (isGuard ? "GUARD" : discName);
+    var maxDiscW = w - 34 - (badgeW ? badgeW + 8 : 8);
+    function discWidth(label, size) {
+      cx.font = "bold " + size + "px 'Trebuchet MS', Bahnschrift, sans-serif";
+      return cx.measureText(label).width;
     }
+    var discSize = 9;
+    if (discWidth(fittedDisc, discSize) > maxDiscW) discSize = 8;
+    if (discWidth(fittedDisc, discSize) > maxDiscW && discShort[fittedDisc]) fittedDisc = discShort[fittedDisc];
+    if (discWidth(fittedDisc, discSize) > maxDiscW) {
+      var parts = fittedDisc.split(" ");
+      if (parts.length > 1 && discWidth(parts[0], discSize) <= maxDiscW) fittedDisc = parts[0];
+    }
+    if (discWidth(fittedDisc, discSize) > maxDiscW) {
+      var kept = "";
+      var chars = Array.from(fittedDisc);
+      for (var ci = 0; ci < chars.length; ci++) {
+        var trial = kept + chars[ci];
+        if (discWidth(trial, discSize) > maxDiscW) break;
+        kept = trial;
+      }
+      fittedDisc = kept;
+    }
+    cx.fillStyle = "#ffffff";
+    cx.font = "bold " + discSize + "px 'Trebuchet MS', Bahnschrift, sans-serif";
+    cx.textAlign = "left";
+    cx.textBaseline = "middle";
     cx.fillText(fittedDisc, x + 30, y + 3 + bannerH / 2);
 
     if (lessonWord) {
-      var badgeW = 52;
       var badgeH = Math.max(16, bannerH - 2);
       var badgeX = x + w - badgeW - 4;
       var badgeY = y + 4;
@@ -18795,7 +18828,7 @@ var CardRenderer = (function () {
       cx.lineWidth = 1.5;
       cx.strokeRect(badgeX, badgeY, badgeW, badgeH);
       cx.fillStyle = lessonWord === "GOOD" ? "#ecfdf5" : "#fff1f2";
-      cx.font = "bold 13px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.font = "bold 11px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.textAlign = "center";
       cx.textBaseline = "middle";
       cx.fillText(lessonWord, badgeX + badgeW / 2, badgeY + badgeH / 2);
@@ -18815,7 +18848,7 @@ var CardRenderer = (function () {
       if (words.length > 1) {
         fittedName = words[0] + " " + words[1].slice(0, 4) + "..";
       } else {
-        fittedName = fittedName.slice(0, 11) + "..";
+        fittedName = Array.from(fittedName).slice(0, 11).join("") + "..";
       }
     }
     cx.fillText(fittedName, x + 6, nameY);
@@ -25251,9 +25284,11 @@ function mapPalette(ogre) {
       floorAlt: "#2c3a50",
       floorHi: "#3d4e68",
       floorLo: "#152033",
-      wall: "#3d4c63",
-      wallHi: "#8b9bb3",
-      wallLo: "#1c2636",
+      /* Walls are darker than the floor. A light grey edge read as an
+         open tile you could step on, and Right did nothing. */
+      wall: "#121820",
+      wallHi: "#1c2636",
+      wallLo: "#0c1016",
       fog: "#141820",
       fogGrain: "rgba(120,140,170,.28)",
     exit: "#d8a24a",
@@ -25278,10 +25313,8 @@ function mapPalette(ogre) {
 function mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, t) {
   cx.fillStyle = pal.fog;
   cx.fillRect(X, Y, cw, ch);
-  cx.strokeStyle = "rgba(148,163,184,.45)";
-  cx.lineWidth = 1;
-  cx.strokeRect(X + 0.5, Y + 0.5, cw - 1, ch - 1);
-  /* soft patterned fog: a few alpha dots, not a flat black slab */
+  /* soft patterned fog: a few alpha dots, not a flat black slab.
+     No grey stroke: that outline read as a tile you could walk onto. */
   const pulse = 0.85 + 0.15 * Math.sin(mapNum(t) * 0.04 + x * 0.7 + y * 0.5);
   cx.fillStyle = pal.fogGrain;
   const dots = 3 + ((x * 3 + y * 5) & 1);
@@ -25315,13 +25348,12 @@ function mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y) {
 function mapPaintWallCell(cx, X, Y, cw, ch, pal) {
   cx.fillStyle = pal.wall;
   cx.fillRect(X, Y, cw, ch);
-  /* recessed core */
+  /* recessed core. The edge is a hairline, darker than the floor,
+     so a wall cannot be mistaken for a highlighted empty tile. */
   cx.fillStyle = pal.wallLo;
-  cx.fillRect(X + 3, Y + 4, cw - 6, ch - 7);
-  /* top highlight edge - the one read that sells "solid" */
+  cx.fillRect(X + 4, Y + 5, cw - 8, ch - 9);
   cx.fillStyle = pal.wallHi;
-  cx.fillRect(X + 1, Y + 1, cw - 2, 2);
-  cx.fillRect(X + 1, Y + 1, 1, ch - 3);
+  cx.fillRect(X + 1, Y + 1, cw - 2, 1);
 }
 
 function mapPaintVignetteEdge(cx, X, Y, cw, ch, pal, m, x, y) {
@@ -32793,6 +32825,11 @@ function fieldMoveLegend(){
    not scroll down to the data table it renders. */
 const stageEl=document.getElementById("stage"), kbEl=document.getElementById("kbstate");
 let gameFocused=false;
+/* Keys physically down. Focusing the canvas while Enter is still held
+   drops that key's release, and the next press of the same key never
+   arrives. Fighter select used to do exactly that on the frame it opened. */
+const heldKeys={};
+function arenaKeyHeld(){ for(const k in heldKeys) if(heldKeys[k]) return true; return false; }
 function setFocused(v){
   if(gameFocused===v) return;
   gameFocused=v;
@@ -32807,6 +32844,7 @@ function arenaFocused(){ return gameFocused; }
 function onArenaKey(e){
   if(!e||e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.key==="Tab") return;
+  if(e.key && !e.repeat) heldKeys[e.key]=1;
   if(!gameFocused) return;          // let the page scroll
   /* Capture phase, so a focused command button cannot swallow Enter
      or B before the arena sees them. Numpad Enter reports a different
@@ -32817,6 +32855,12 @@ function onArenaKey(e){
   if(typeof e.preventDefault==="function") e.preventDefault(); onKey(k);
 }
 addEventListener("keydown",onArenaKey,true);
+function onArenaKeyUp(e){
+  if(e&&e.key) delete heldKeys[e.key];
+  if(G&&G._focusWait&&!arenaKeyHeld()){ G._focusWait=false; focusArenaNow(); }
+}
+addEventListener("keyup",onArenaKeyUp,true);
+addEventListener("blur",()=>{ for(const k in heldKeys) delete heldKeys[k]; },true);
 document.querySelectorAll("[data-k]").forEach(b=>{
   const k=b.dataset.k;
   b.addEventListener("pointerdown",e=>{ e.preventDefault(); setFocused(true); b.classList.add("on"); onKey(k); });
@@ -32912,12 +32956,21 @@ const settingsDrawer=document.getElementById("settingsDrawer");
 /* Closing the drawer used to leave focus on the close button, which sits
    outside the arena. The next key then dropped on the floor until the
    canvas was clicked again, so pause (the key the map names) did nothing. */
-function focusArena(){
-  setFocused(true);
+function focusArenaNow(){
+  focusArena.dom=(focusArena.dom|0)+1;
   if(cvEl&&typeof cvEl.focus==="function"){
     try{ cvEl.focus({preventScroll:true}); }
     catch(err){ try{ cvEl.focus(); }catch(e2){} }
   }
+}
+function focusArena(){
+  setFocused(true);
+  /* A focus() call while the confirm key is still down swallows the next
+     press. Wait for the release, and never refocus an arena that already
+     has the keyboard: that second focus is what ate the first Enter on
+     fighter select. */
+  if(arenaKeyHeld()){ if(typeof G!=="undefined"&&G) G._focusWait=true; return; }
+  focusArenaNow();
 }
 function closeSettingsDrawer(){
   if(settingsDrawer&&settingsDrawer.classList&&settingsDrawer.classList.remove)
@@ -35247,55 +35300,36 @@ function drawTitleDifficultyBar(cxPos, cyPos){
   const curIdx = SAVE.diff || 0;
   const totalW = 460, h = 36;
   const startX = cxPos - totalW/2;
-
-  // Background track
-  cx.save();
-  cx.fillStyle = "rgba(10, 14, 22, 0.75)";
-  cx.strokeStyle = "rgba(34, 211, 238, 0.25)";
-  cx.lineWidth = 1;
-  if(typeof cx.roundRect === "function"){
-    cx.beginPath(); cx.roundRect(startX, cyPos - h/2, totalW, h, 6); cx.fill(); cx.stroke();
-  } else {
-    cx.fillRect(startX, cyPos - h/2, totalW, h);
-    cx.strokeRect(startX, cyPos - h/2, totalW, h);
-  }
-
-  // Render clickable tier items
   const tabW = totalW / DIFFS.length;
+  /* Only the selected grade gets a pill. A shared dark track left a
+     leftover box sitting on ROOKIE after the player moved off it. */
   for(let i = 0; i < DIFFS.length; i++){
     const d = DIFFS[i];
     const tx = startX + i * tabW;
     const isAct = (i === curIdx);
     const col = d.color || GOLD;
-
     const lines=titleDiffLines(d.name);
     const size=lines.length>1?10:12;
-    cx.save();
-    cx.beginPath();
-    cx.rect(tx+2, cyPos - h/2 + 2, tabW-4, h-4);
-    cx.clip();
     if(isAct){
-      const activeGrad = cx.createLinearGradient(tx + 2, cyPos - h/2, tx + 2, cyPos + h/2);
-      activeGrad.addColorStop(0, "rgba(255,255,255,0.12)");
-      activeGrad.addColorStop(1, "rgba(255,255,255,0.02)");
-      cx.fillStyle = activeGrad;
+      cx.save();
+      cx.fillStyle = "rgba(12, 16, 26, 0.96)";
+      cx.strokeStyle = col;
+      cx.lineWidth = 1.5;
       if(typeof cx.roundRect === "function"){
-        cx.beginPath(); cx.roundRect(tx + 2, cyPos - h/2 + 2, tabW - 4, h - 4, 4); cx.fill();
+        cx.beginPath(); cx.roundRect(tx + 2, cyPos - h/2 + 2, tabW - 4, h - 4, 4); cx.fill(); cx.stroke();
       } else {
         cx.fillRect(tx + 2, cyPos - h/2 + 2, tabW - 4, h - 4);
+        cx.strokeRect(tx + 2, cyPos - h/2 + 2, tabW - 4, h - 4);
       }
       cx.fillStyle = col;
-      cx.shadowColor = col;
-      cx.shadowBlur = 8;
-      cx.fillRect(tx + 6, cyPos + h/2 - 6, tabW - 12, 2.5);
-      cx.shadowBlur = 0;
+      cx.fillRect(tx + 8, cyPos + h/2 - 6, tabW - 16, 2.5);
+      cx.restore();
     }
     lines.forEach((ln,li)=>{
       const ly=lines.length>1?(cyPos - 4 + li*12):(cyPos + 4);
       txt(ln, tx + tabW/2, ly, size, isAct?col:"#d1d5db", "center", isAct?900:700, false,
           isAct?"'Orbitron','Rajdhani',sans-serif":"'Rajdhani',sans-serif");
     });
-    cx.restore();
 
     G.hot.push({ x: tx, y: cyPos - h/2, w: tabW, h: h, click: () => { SAVE.diff = i; persist(); if(typeof sPick==="function") sPick(); } });
   }
@@ -35305,7 +35339,6 @@ function drawTitleDifficultyBar(cxPos, cyPos){
   txt("\u25b6", startX + totalW + 14, cyPos + 4, 12, "rgba(34,211,238,0.75)", "center", 800);
   G.hot.push({ x: startX - 28, y: cyPos - h/2, w: 24, h: h, click: () => { cycleDifficulty(-1); } });
   G.hot.push({ x: startX + totalW + 4, y: cyPos - h/2, w: 24, h: h, click: () => { cycleDifficulty(1); } });
-  cx.restore();
 }
 
 function rTitle(){
@@ -35726,7 +35759,7 @@ function rMenu(){
   const footerY = H - 42;
   panel(40, footerY, W - 80, 28, "rgba(10,14,22,.90)", "#202636", null, 6);
   txt(MENU_TABS[G.menuTab|0].name + "  " + (pageIdx + 1) + " / " + pageCount, 60, footerY + 18, 10.5, AQUA, "left", 800);
-  txt(LGJ("ARROWS - MOVE", LG("y","NEXT TAB"), LG("a","SELECT"), LG("b","TITLE")), W / 2 + 30, footerY + 18, 10.5, DIM, "center", 700);
+  txt(LGJ("ARROWS - MOVE", LG("y","NEXT TAB"), LG("a","SELECT"), LG("diff","DIFFICULTY"), LG("b","TITLE")), W / 2 + 30, footerY + 18, 10.5, DIM, "center", 700);
   artNote();
 }
 /* One topic per thing you can be doing, so help is about the mode you are
@@ -37580,12 +37613,50 @@ function divLabel(div){
   if(/^light heavy$/i.test(s)) s="Lt Heavy";
   return s;
 }
+/* Code points, then combining marks, so a clip never lands inside a
+   character. Intl.Segmenter is used when the browser has it. */
+function textGraphemes(s){
+  const str=String(s||"");
+  if(typeof Intl!=="undefined" && Intl.Segmenter){
+    try{
+      const seg=new Intl.Segmenter(undefined,{granularity:"grapheme"});
+      return Array.from(seg.segment(str), x=>x.segment);
+    }catch(e){}
+  }
+  const out=[], cps=Array.from(str);
+  for(let i=0;i<cps.length;i++){
+    let g=cps[i];
+    while(i+1<cps.length && /\p{M}/u.test(cps[i+1])) g+=cps[++i];
+    out.push(g);
+  }
+  return out;
+}
+/* "Kwon Won-Ri" becomes "Kwon W." when the cell cannot hold the full name.
+   That is a name, not a cut through the middle of a word. */
+function nameShortForm(name){
+  const words=String(name||"").trim().split(/\s+/).filter(Boolean);
+  if(words.length<2) return words[0]||"";
+  const last=textGraphemes(words[words.length-1]);
+  return words[0]+" "+(last[0]||"")+".";
+}
 function fitLine(s, budget, size, weight){
-  let t=String(s||"");
+  const raw=String(s||"");
   cx.font=(weight||700)+" "+size+"px 'Rajdhani','Teko',Bahnschrift,sans-serif";
-  if(cx.measureText(t).width<=budget) return t;
-  while(t.length>3 && cx.measureText(t+"...").width>budget) t=t.slice(0,-1);
-  return t+"...";
+  const wide=t=>cx.measureText(t).width>budget;
+  if(!wide(raw)) return raw;
+  const words=raw.trim().split(/\s+/).filter(Boolean);
+  if(words.length>=2){
+    const short=nameShortForm(raw);
+    if(short && !wide(short)) return short;
+    if(!wide(words[0])) return words[0];
+  }
+  const g=textGraphemes(raw);
+  let n=g.length;
+  while(n>1 && wide(g.slice(0,n).join("")+"...")) n--;
+  let out=g.slice(0, Math.max(1,n)).join("");
+  const sp=Math.max(out.lastIndexOf(" "), out.lastIndexOf("-"));
+  if(sp>=2 && !wide(out.slice(0,sp)+"...")) out=out.slice(0,sp);
+  return out+"...";
 }
 function wrapWords(s, budget, size, weight, maxLines){
   const raw=String(s||"");
@@ -38014,42 +38085,44 @@ function rMap(){
     for(let y=0;y<m.N;y++)for(let x=0;x<m.N;x++){
       const X=ox+x*C, Y=oy+y*C;
       if(!m.seen[y][x]){ cx.fillStyle="#07080a"; cx.fillRect(X,Y,C-2,C-2); continue; }
-      if(m.g[y][x]){ cx.fillStyle=m.ogre?"#2a1420":"#20242e"; cx.fillRect(X,Y,C-2,C-2);
-        cx.fillStyle=m.ogre?"#3a1c2c":"#2a2f3b"; cx.fillRect(X+3,Y+3,C-8,C-8); }
+      if(m.g[y][x]){ cx.fillStyle=m.ogre?"#2a1420":"#121820"; cx.fillRect(X,Y,C-2,C-2);
+        cx.fillStyle=m.ogre?"#3a1c2c":"#0c1016"; cx.fillRect(X+3,Y+3,C-8,C-8); }
       else { cx.fillStyle=m.ogre?"#180e14":"#13161c"; cx.fillRect(X,Y,C-2,C-2); }
     }
     cx.strokeStyle="#2a2d35"; cx.strokeRect(ox-1.5,oy-1.5,m.N*C+1,m.N*C+1);
   }
   const cell=(x,y)=>[ox+x*C,oy+y*C];
   const route=fieldRoute(m);
-  (route.path||[]).forEach((p,i)=>{
-    if(!i) return;
-    const X=ox+p.x*C, Y=oy+p.y*C;
-    cx.fillStyle="rgba(34,211,238,.42)";
-    cx.fillRect(X+2,Y+2,C-6,C-6);
-    cx.fillStyle="#e0faff";
-    cx.fillRect(X+C/2-3,Y+C/2-3,6,6);
-    /* Walls beside the route show through the fog, so the path is a
-       corridor and not a line you discover by walking into stone. */
-    [[1,0],[-1,0],[0,1],[0,-1]].forEach(dxy=>{
-      const nx=p.x+dxy[0], ny=p.y+dxy[1];
-      if(nx<0||ny<0||nx>=m.N||ny>=m.N) return;
-      if(!m.g[ny]||!m.g[ny][nx]) return;
-      if(m.seen[ny]&&m.seen[ny][nx]) return;
-      const WX=ox+nx*C, WY=oy+ny*C;
-      cx.fillStyle="rgba(139,155,179,.72)";
-      cx.fillRect(WX+3,WY+3,C-8,C-8);
-    });
-  });
   const pal=(typeof mapPalette==="function")?mapPalette(!!m.ogre):null;
   {
+    /* The door sits on the east column. Draw it only once that cell is
+       seen. Until then a chevron on the frame's east edge marks the row,
+       so the exit reads as the edge and not a tile floating in the fog. */
+    const exitSeen=!!(m.seen[m.exitY]&&m.seen[m.exitY][14]);
     const [X,Y]=cell(14,m.exitY);
-    if(typeof paintMapEntity==="function")
-      paintMapEntity(cx,"exit",X,Y,C,{seen:true,ogre:!!m.ogre,pal});
-    else {
-      cx.fillStyle=m.seen[m.exitY][14]?(m.ogre?RED:GOLD):"#20242e";
-      cx.fillRect(X+4,Y+2,C-10,C-6);
-      if(m.seen[m.exitY][14]) txt(m.ogre?"T":"EXIT",X+C/2-1,Y+C/2+4,m.ogre?14:7,"#0a0b0e","center",800);
+    const edge=ox+m.N*C-1;
+    cx.strokeStyle=m.ogre?"rgba(224,58,47,.75)":"rgba(216,162,74,.9)";
+    cx.lineWidth=2;
+    cx.beginPath();
+    cx.moveTo(edge, oy);
+    cx.lineTo(edge, oy+m.N*C);
+    cx.stroke();
+    cx.lineWidth=1;
+    cx.fillStyle=m.ogre?RED:GOLD;
+    cx.beginPath();
+    cx.moveTo(edge, Y+7);
+    cx.lineTo(edge+11, Y+C/2-1);
+    cx.lineTo(edge, Y+C-9);
+    cx.closePath();
+    cx.fill();
+    if(exitSeen){
+      if(typeof paintMapEntity==="function")
+        paintMapEntity(cx,"exit",X,Y,C,{seen:true,ogre:!!m.ogre,pal});
+      else {
+        cx.fillStyle=m.ogre?RED:GOLD;
+        cx.fillRect(X+4,Y+2,C-10,C-6);
+        txt(m.ogre?"T":"EXIT",X+C/2-1,Y+C/2+4,m.ogre?14:7,"#0a0b0e","center",800);
+      }
     }
   }
   m.temples.forEach(t=>{ if(!m.seen[t.y][t.x]||t.used) return; const [X,Y]=cell(t.x,t.y);
@@ -38102,6 +38175,18 @@ function rMap(){
       for(let i=0;i<5;i++){ const an=-Math.PI/2+i*2*Math.PI/5, an2=an+Math.PI/5;
         cx[i?"lineTo":"moveTo"](cxx+Math.cos(an)*9,cyy+Math.sin(an)*9); cx.lineTo(cxx+Math.cos(an2)*4,cyy+Math.sin(an2)*4); }
       cx.closePath(); cx.fill(); }
+  });
+  /* After the node icons, so a camp or a card cannot cover the way
+     onward. The first point is the player; every later step stays lit. */
+  (route&&route.path||[]).forEach((p,i)=>{
+    if(!i) return;
+    const X=ox+p.x*C, Y=oy+p.y*C;
+    cx.strokeStyle="#67e8f9";
+    cx.lineWidth=2;
+    cx.strokeRect(X+4, Y+4, C-10, C-10);
+    cx.fillStyle="rgba(34,211,238,.72)";
+    cx.fillRect(X+8, Y+8, C-18, C-18);
+    cx.lineWidth=1;
   });
   {
     const [X,Y]=cell(m.px,m.py), pulse=(G.t/14|0)%2;
@@ -38702,8 +38787,14 @@ function fitName(name,budget,weight){
     const cut=out.indexOf(" (");
     if(cut>0) out=out.slice(0,cut);          // the parenthetical is a translation
     if(wide(out)){
-      while(out.length>4&&wide(out+"...")) out=out.slice(0,-1);
-      out=out+"...";
+      const short=nameShortForm(out);
+      if(short && short!==out && !wide(short)) out=short;
+      else {
+        const g=textGraphemes(out);
+        let n=g.length;
+        while(n>1 && wide(g.slice(0,n).join("")+"...")) n--;
+        out=g.slice(0, Math.max(1,n)).join("")+"...";
+      }
     }
   }
   memo[key]=out; return out;
@@ -40419,7 +40510,7 @@ function step(){
   if(G.scene===S.LOAD && (artReady() || (loadedN>=4 && G.t>75) || G.t>240)){ G.scene=S.TITLE; focusArena(); }
   if(G.scene!==G._kbdScene){
     G._kbdScene=G.scene;
-    if(G.scene===S.SELECT||G.scene===S.HOW) focusArena();
+    if((G.scene===S.SELECT||G.scene===S.HOW) && !gameFocused) focusArena();
   }
   /* the cabinet fights itself when nobody is standing at it. attractTick runs
      unconditionally so the demo's own clock advances while the scene is DUEL;

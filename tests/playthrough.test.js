@@ -486,4 +486,42 @@ module.exports = function (h) {
        && A.exec("divLabel('Light Heavyweight')") === "Lt Heavy",
        "weight classes are shortened on a word, not sliced mid-letter");
   }
+
+  section("after camp, east is a step or a wall, and the route stays");
+  {
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv); G.scene=S.MAP;");
+    const camp = A.exec("(function(){" +
+      "var m=G.adv.map, c=(m.camps||[])[0]; if(!c) return null;" +
+      "m.px=c.x; m.py=c.y; G.campFirst=true; G.adv.campTaken=true; m.camps.length=0;" +
+      "openDeadEast(m); var eastX=m.px+1, eastY=m.py;" +
+      "var blocked=eastX>=m.N||!!(m.g[eastY]&&m.g[eastY][eastX]);" +
+      "var r=fieldRoute(m), s=r.path&&r.path[1];" +
+      "var legal=!!(s&&Math.abs(s.x-m.px)+Math.abs(s.y-m.py)===1&&!(m.g[s.y]&&m.g[s.y][s.x]));" +
+      "var before=m.px+','+m.py; if(!blocked) advMove(1,0);" +
+      "return {blocked:blocked, legal:legal, moved:m.px+','+m.py!==before, n:(r.path||[]).length," +
+      "kind:r.dest&&r.dest.kind, wall:mapPalette(false).wall, floor:mapPalette(false).floor};" +
+      "})()");
+    ok(camp && camp.n > 1, "leaving camp still has a route off the tile", camp && camp.n);
+    ok(camp && (!camp.blocked || camp.legal), "east is walkable, or the lit path has another legal step", JSON.stringify(camp));
+    if (camp && !camp.blocked) ok(camp.moved, "a walkable east tile actually takes the step", JSON.stringify(camp));
+    const lum = (hex) => {
+      const n = parseInt(String(hex).slice(1), 16);
+      return ((n >> 16) & 255) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11;
+    };
+    ok(camp && lum(camp.wall) < lum(camp.floor), "a wall is darker than the floor", camp && (camp.wall + " vs " + camp.floor));
+    const opened = A.exec("(function(){" +
+      "var N=15, g=Array.from({length:N},function(){return Array(N).fill(1);});" +
+      "g[7][5]=0; g[7][14]=0; g[7][13]=0;" +
+      "var m={N:N,g:g,px:5,py:7,exitY:7,ogre:false,foes:[],patrols:[],temples:[],cards:[],pits:[],camps:[],gyms:[]};" +
+      "openDeadEast(m); return m.g[7][6]===0; })()");
+    ok(opened === true, "with no legal step, the east wall toward the exit opens");
+    ok(PAGE.indexOf("fittedDisc.slice(0, 11)") < 0, "card styles are not clipped mid-word");
+    ok(PAGE.indexOf('"TAEKWONDO": "TKD"') >= 0 && PAGE.indexOf('"MUAY THAI": "MUAY"') >= 0,
+       "long styles have a short form that is still the art");
+    ok(A.exec("nameShortForm('Kwon Won-Ri')") === "Kwon W.", "a tight roster name keeps a readable short form",
+       A.exec("nameShortForm('Kwon Won-Ri')"));
+    const clip = A.exec("fitLine('e'+String.fromCharCode(0x0301)+'XTRA NAME', 5, 12, 800)");
+    ok(String(clip).indexOf("\u0301") >= 0, "a clip does not cut a combining mark off its letter", clip);
+  }
 };
