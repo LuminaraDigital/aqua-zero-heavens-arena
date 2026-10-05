@@ -218,36 +218,6 @@ var CardRenderer = (function () {
       }
     }
 
-    /* A lesson stamps GOOD or BAD on every card in the hand. The selected
-       card still gets the full read. The others get the word, so the tell
-       can be answered without scrolling onto each one. */
-    var lessonWord = "";
-    if (live.note && live.note.indexOf("GOOD") === 0) lessonWord = "GOOD";
-    else if (live.note && live.note.indexOf("BAD") === 0) lessonWord = "BAD";
-    if (selected && live.note) {
-      cx.fillStyle = "rgba(15, 23, 42, 0.92)";
-      cx.fillRect(x + 5, noteY, w - 10, noteH);
-      cx.strokeStyle = lessonWord === "BAD" ? "rgba(224,58,47,.7)" : (lessonWord === "GOOD" ? "rgba(16,185,129,.7)" : "rgba(245, 158, 11, 0.5)");
-      cx.lineWidth = 1;
-      cx.strokeRect(x + 5, noteY, w - 10, noteH);
-      cx.fillStyle = live.noteColor || "#f0b849";
-      cx.fillRect(x + 5, noteY, 3, noteH);
-
-      var noteFont = "bold 12px 'Rajdhani','Teko',Bahnschrift,sans-serif";
-      cx.fillStyle = live.noteColor || "#f0b849";
-      cx.font = noteFont;
-      cx.textAlign = "left";
-      cx.textBaseline = "middle";
-      cx.fillText(clipText(cx, live.note, w - 20, noteFont), x + 11, noteY + noteH / 2);
-    } else if (lessonWord) {
-      cx.fillStyle = lessonWord === "GOOD" ? "rgba(16,185,129,.28)" : "rgba(224,58,47,.32)";
-      cx.fillRect(x + 5, noteY, w - 10, noteH);
-      cx.fillStyle = lessonWord === "GOOD" ? "#34d399" : "#fecdd3";
-      cx.font = "bold 11px 'Rajdhani','Teko',Bahnschrift,sans-serif";
-      cx.textAlign = "left";
-      cx.textBaseline = "middle";
-      cx.fillText(lessonWord, x + 11, noteY + noteH / 2);
-    }
   }
 
   function getTech(techId) {
@@ -367,6 +337,11 @@ var CardRenderer = (function () {
        and the card renders exactly as it always did. */
     var live = (opts.live && typeof opts.live === "object" && !Array.isArray(opts.live)) ? opts.live : null;
     var unaffordable = !!(live && live.affordable === false);
+    var lessonWord = "";
+    if (live && typeof live.note === "string") {
+      if (live.note.indexOf("GOOD") === 0) lessonWord = "GOOD";
+      else if (live.note.indexOf("BAD") === 0) lessonWord = "BAD";
+    }
 
     var discInfo = getDisciplineInfo(tech.disc);
     var discColor = discInfo.color || "#38bdf8";
@@ -614,12 +589,29 @@ var CardRenderer = (function () {
     cx.fillStyle = "#ffffff";
     cx.font = "bold 9.5px 'Trebuchet MS', Bahnschrift, sans-serif";
     cx.textAlign = "left";
-    var maxDiscW = w - 40;
+    var maxDiscW = w - (lessonWord ? 72 : 40);
     var fittedDisc = isSig ? "★ SPECIAL MOVE" : (isGuard ? "DEFENSE / GUARD" : discName);
     if (cx.measureText(fittedDisc).width > maxDiscW) {
       fittedDisc = fittedDisc.slice(0, 11) + "..";
     }
     cx.fillText(fittedDisc, x + 30, y + 3 + bannerH / 2);
+
+    if (lessonWord) {
+      var badgeW = 52;
+      var badgeH = Math.max(16, bannerH - 2);
+      var badgeX = x + w - badgeW - 4;
+      var badgeY = y + 4;
+      cx.fillStyle = lessonWord === "GOOD" ? "#065f46" : "#9f1239";
+      cx.fillRect(badgeX, badgeY, badgeW, badgeH);
+      cx.strokeStyle = lessonWord === "GOOD" ? "#6ee7b7" : "#fecdd3";
+      cx.lineWidth = 1.5;
+      cx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+      cx.fillStyle = lessonWord === "GOOD" ? "#ecfdf5" : "#fff1f2";
+      cx.font = "bold 13px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.textAlign = "center";
+      cx.textBaseline = "middle";
+      cx.fillText(lessonWord, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    }
 
     // 3. Technique Name
     cx.fillStyle = "#f8fafc";
@@ -761,6 +753,12 @@ var CardRenderer = (function () {
       cx.textAlign = "center";
       cx.textBaseline = "middle";
       cx.fillText(pointCost + " PTS", x + w / 2, pcY + 6.5);
+    }
+
+    if (lessonWord) {
+      cx.strokeStyle = lessonWord === "GOOD" ? "#34d399" : "#fb7185";
+      cx.lineWidth = 4;
+      cx.strokeRect(x + 2, y + 2, w - 4, h - 4);
     }
 
     if (opts.comboIndex) {

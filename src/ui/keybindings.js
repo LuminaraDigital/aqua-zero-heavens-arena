@@ -108,6 +108,7 @@ window.Keybindings = (function() {
         y: "y", Y: "y", c: "y", C: "y", i: "y", I: "y",
         r: "rand", R: "rand",
         o: "code", O: "code",
+        q: "chain", Q: "chain",
         "1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7", "8": "8"
     };
     /* scene overrides, consulted BEFORE the table. The title prints

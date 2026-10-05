@@ -239,14 +239,9 @@ module.exports = function (h) {
     const rows = A.menuTechsFor(d, d.p);
     ok(rows.length > 0, "the menu opens on techniques, not categories", rows.length);
     A.onKey("down"); A.onKey("a");
-    ok(d.ph === A.D.CHAIN || d.ph === A.D.EXEC || d.ph === A.D.DEFEND || d.ph === A.D.JUGGLE,
+    ok(d.ph !== A.D.CHAIN, "Z and Enter throw the card instead of opening add-a-link", phase());
+    ok(d.ph === A.D.EXEC || d.ph === A.D.DEFEND || d.ph === A.D.JUGGLE,
        "A throws the row under the cursor", phase());
-    // picking a technique may now offer a combination first - B throws what
-    // you have, which is the path a player who does not want to chain takes
-    if (d.ph === A.D.CHAIN) {
-      ok((d.seq || []).length === 1, "the chain opens on the technique you picked", (d.seq || []).length);
-      A.onKey("b");
-    }
     ok(d.queue.length === 2 || d.ph === A.D.EXEC || d.ph === A.D.DEFEND || d.ph === A.D.JUGGLE,
        "committing builds the turn", phase());
     // play it out
@@ -254,6 +249,62 @@ module.exports = function (h) {
     while (A.G.scene === A.S.DUEL && g < 40000) { A.onKey("a"); A.step(); A.render(); g++; }
     ok(g < 40000, "the battle terminates", g + " frames");
     ok(A.G.scene === A.S.RESULT, "and lands on a result", scene());
+  }
+
+  section("number keys pick a card and confirm throws it");
+  {
+    A.exec("SAVE=DEF_SAVE(); G.adv=null; G.surv=null; G.duel=null;");
+    A.exec("startDuel({p1:0,p1hp:120,p1pool:battlePool(0,9),p1level:9," +
+           "oppFid:1,oppHp:120,oppPool:battlePool(1,9),oppLv:9,fromAdv:false,stage:3});");
+    frames(700);
+    const d = A.G.duel;
+    ok(d.ph === A.D.CMD, "the hand is waiting", phase());
+    ok(A.Keybindings.arenaAction("z", "DUEL") === "a" && A.Keybindings.arenaAction("Enter", "DUEL") === "a",
+       "Z and Enter are the confirm keys");
+    ok(A.Keybindings.arenaAction("q", "DUEL") === "chain", "Q is add-a-link, not confirm");
+    ok(A.Keybindings.arenaAction("1", "DUEL") === "1" && A.Keybindings.arenaAction("5", "DUEL") === "5",
+       "1 through 5 stay card keys");
+    A.exec("G.duel.cmdCat=0; G.duel.cmdSel=0; G.duel.cmdKey=null; G.duel.cmdScroll=0;");
+    const n = A.exec("menuTechsFor(G.duel,G.duel.p).length");
+    ok(n >= 5, "five numbered slots are on the hand", n);
+    A.onKey("4");
+    ok(d.ph === A.D.CMD, "4 does not throw", phase());
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 3,
+       "4 selects the fourth card");
+    A.onKey("1");
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 0,
+       "1 selects the first card");
+    A.onKey("2");
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 1,
+       "2 selects the second card");
+    const cat = d.cmdCat;
+    A.onKey("right");
+    ok(d.ph === A.D.CMD && d.cmdCat === cat, "right stays on this filter", phase());
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 2,
+       "right moves the cursor to the next card");
+    A.onKey("left");
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 1,
+       "left moves the cursor back");
+    A.onKey("5");
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 4,
+       "5 selects the fifth card");
+    A.onKey("3");
+    ok(A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()") === 2,
+       "3 selects the third card");
+    A.exec("(function(){ var d=G.duel; var list=menuTechsFor(d,d.p); var i=0;" +
+           "for(var n=0;n<list.length;n++){ var t=list[n];" +
+           "if(t&&!t.sig&&t.power>0&&!(d.p.sig&&t===d.p.sig)){ i=n; break; } }" +
+           "cmdPoint(d,d.p,i,list); })();");
+    A.onKey("chain");
+    if (d.ph === A.D.CHAIN) {
+      ok((d.seq || []).length === 1, "Q opens add-a-link on the selected card");
+      A.onKey("b");
+      ok(d.ph === A.D.CMD, "B leaves add-a-link without throwing", phase());
+    }
+    A.onKey("a");
+    ok(d.ph !== A.D.CHAIN, "confirm does not open add-a-link", phase());
+    ok(d.ph === A.D.EXEC || d.ph === A.D.DEFEND || d.ph === A.D.JUGGLE,
+       "confirm throws the selected card", phase());
   }
 
   section("turn upkeep and win conditions");

@@ -248,6 +248,27 @@ module.exports = function (h) {
     ok(drawn.indexOf("NEXT:") >= 0 && drawn.indexOf("EXIT:") >= 0, "the field prints the route", drawn);
     const pal = A.exec("mapPalette(false)");
     ok(pal.floor !== "#07080a" && pal.grid !== "#07080a", "the floor and the grid are lighter than the void", pal.floor + " / " + pal.grid);
+    ok(A.exec("(function(){ return !!fieldWalk(G.adv.map,[fieldExit(G.adv.map)]); })()"),
+       "the east exit can be walked to");
+    const step = A.exec("(function(){ var m=G.adv.map; var r=fieldRoute(m); var s=r.path&&r.path[1];" +
+      "if(!s) return null; return {adj:Math.abs(s.x-m.px)+Math.abs(s.y-m.py)," +
+      "wall:!!(m.g[s.y]&&m.g[s.y][s.x])}; })()");
+    ok(step && step.adj === 1 && !step.wall, "the lit path steps onto an open tile", JSON.stringify(step));
+    ok(drawn.indexOf("DOSSIER") < 0 && drawn.indexOf("B / X - PAUSE") < 0 && drawn.indexOf("PAUSE") < 0,
+       "the legend is not covered by the pause line", drawn);
+  }
+
+  section("a hunting patrol can be stepped on");
+  {
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv); G.scene=S.MAP;");
+    const landed = A.exec("(function(){ var m=G.adv.map; var nx=m.px+1, ny=m.py;" +
+      "m.g[ny][nx]=0; var f=m.foes[0]; if(!f) return 'nofoe';" +
+      "f.done=false; f.hunting=true; f.x=nx; f.y=ny;" +
+      "(m.patrols||[]).forEach(function(p){ if(p.x===nx&&p.y===ny) p.used=true; });" +
+      "m.camps=[]; (m.gyms||[]).forEach(function(g){ g.used=true; });" +
+      "advMove(1,0); return G.scene===S.BRIEF?'brief':String(G.scene); })()");
+    ok(landed === "brief", "walking east onto a hunting patrol opens the fight", landed);
   }
 
   section("the first fights of a fresh run last long enough to teach");
@@ -276,6 +297,9 @@ module.exports = function (h) {
            "if(typeof Onboarding!=='undefined') Onboarding.markSeen(SAVE,'l_range');");
     const drawn = joined(cap(() => frames(1)));
     ok(drawn.indexOf("READ THE TELL") >= 0, "the fight screen prints the tell beat", drawn);
+    ok(drawn.indexOf("[1]-[5] PICK CARD") >= 0 && drawn.indexOf("EXECUTE") >= 0,
+       "the footer says number keys pick and confirm executes", drawn);
+    ok(drawn.indexOf("SWITCH [ATTACK") < 0, "the footer is one line, with no category overdraw", drawn);
     A.exec("G.duel.e.hp=0; endDuel(G.duel);");
     A.exec("startDuel({fromAdv:true,tf:true,oppFid:4,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
     ok(A.exec("G.duel.lessonFight") === true && A.exec("G.duel.oneShot") === false,

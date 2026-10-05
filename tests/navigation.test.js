@@ -37,11 +37,14 @@ module.exports = function (h) {
   }
   {
     // the technique list is not behind a category any more - it IS the
-    // command menu, and left/right filter it without leaving the screen
+    // command menu, and left/right move the cursor without leaving it
     toDuel();
+    const cat0 = A.G.duel.cmdCat;
+    const focus0 = A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()");
     press("right");
-    ok(phase() === "CMD" && A.G.duel.cmdCat === 1,
-       "left and right filter the list in place", phase() + " tab " + A.G.duel.cmdCat);
+    const focus1 = A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()");
+    ok(phase() === "CMD" && A.G.duel.cmdCat === cat0 && focus1 !== focus0,
+       "left and right move the cursor and stay on the hand", phase() + " " + focus0 + " -> " + focus1);
     A.exec("G.duel.ph=D.TECH;");
     press("b");
     ok(phase() === "CMD", "the old second step folds back into the one menu", phase());
