@@ -25290,7 +25290,8 @@ function mapPalette(ogre) {
       wallHi: "#1c2636",
       wallLo: "#0c1016",
       fog: "#141820",
-      fogGrain: "rgba(120,140,170,.28)",
+      /* Dark grain. A light speck on fog reads as an open floor tile. */
+      fogGrain: "rgba(0,0,0,.45)",
     exit: "#d8a24a",
     exitInk: "#0a0b0e",
     exitDim: "#20242e",
@@ -25310,11 +25311,26 @@ function mapPalette(ogre) {
    Tile painters - one cell each. Kept as local helpers so the field
    loop stays readable.
    --------------------------------------------------------------------- */
+/* What a cell is allowed to look like.
+   floor: walkable. wall: blocked, and seen or next to the player.
+   fog: blocked and still unexplored, and not a step the player can try.
+   A blocked neighbour is never "floor". That grey tile took the key
+   and did not move. */
+function fieldCellFace(m, x, y) {
+  if (!m || !m.g) return "void";
+  const N = m.N | 0;
+  if (x < 0 || y < 0 || x >= N || y >= N) return "void";
+  if (!m.g[y][x]) return "floor";
+  const seen = !!(m.seen && m.seen[y] && m.seen[y][x]);
+  const beside = Math.abs(x - (m.px | 0)) + Math.abs(y - (m.py | 0)) === 1;
+  if (seen || beside) return "wall";
+  return "fog";
+}
+
 function mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, t) {
   cx.fillStyle = pal.fog;
   cx.fillRect(X, Y, cw, ch);
-  /* soft patterned fog: a few alpha dots, not a flat black slab.
-     No grey stroke: that outline read as a tile you could walk onto. */
+  /* Dark dots only. Light specks on fog looked like a floor you could step on. */
   const pulse = 0.85 + 0.15 * Math.sin(mapNum(t) * 0.04 + x * 0.7 + y * 0.5);
   cx.fillStyle = pal.fogGrain;
   const dots = 3 + ((x * 3 + y * 5) & 1);
@@ -25393,11 +25409,12 @@ function paintMapField(cx, m, layout, t) {
     for (let x = 0; x < N; x++) {
       const X = ox + x * C;
       const Y = oy + y * C;
-      if (!m.seen[y] || !m.seen[y][x]) {
+      const face = fieldCellFace(m, x, y);
+      if (face === "fog" || face === "void") {
         mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, frame);
         continue;
       }
-      if (m.g[y][x]) mapPaintWallCell(cx, X, Y, cw, ch, pal);
+      if (face === "wall") mapPaintWallCell(cx, X, Y, cw, ch, pal);
       else mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y);
       mapPaintVignetteEdge(cx, X, Y, cw, ch, pal, m, x, y);
     }
@@ -32841,22 +32858,46 @@ addEventListener("pointerdown",e=>setFocused(stageEl.contains(e.target)),true);
 addEventListener("focusin",e=>{ if(stageEl.contains(e.target)) setFocused(true);
                                 else if(e.target!==document.body) setFocused(false); });
 function arenaFocused(){ return gameFocused; }
+/* Keys that were already down when this scene opened. Repeats of those
+   keys are the tail of the press that got us here, not a new choice.
+   A keydown with repeat false is a fresh edge and always counts. */
+function armArrivalKeys(){
+  if(!G||G._kbdScene===G.scene) return;
+  G._kbdScene=G.scene;
+  const arm={};
+  for(const k in heldKeys) if(heldKeys[k]) arm[k]=1;
+  G._armKeys=arm;
+  /* Accept the next key without calling canvas.focus(). Focusing the
+     canvas on the frame fighter select opens is what swallowed Enter. */
+  if((G.scene===S.SELECT||G.scene===S.HOW) && !gameFocused) setFocused(true);
+}
 function onArenaKey(e){
   if(!e||e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.key==="Tab") return;
   if(e.key && !e.repeat) heldKeys[e.key]=1;
+  /* A fresh Enter or Z on fighter select confirms even if focus was
+     lost on the way in. Repeats of the key that opened the screen do not. */
+  if(G&&G.scene===S.SELECT&&!e.repeat){
+    const peek=e.code==="NumpadEnter"?"Enter":e.key;
+    if(peek==="Enter"||peek==="z"||peek==="Z"||peek===" ") setFocused(true);
+  }
   if(!gameFocused) return;          // let the page scroll
   /* Capture phase, so a focused command button cannot swallow Enter
      or B before the arena sees them. Numpad Enter reports a different
      key on some browsers; it confirms, the same as Enter. */
   let key=e.key;
   if(e.code==="NumpadEnter") key="Enter";
+  if(G&&G.scene===S.SELECT&&e.repeat&&G._armKeys&&(G._armKeys[e.key]||G._armKeys[key])) return;
   const k=Keybindings.arenaAction(key,sceneKey()); if(!k) return;
   if(typeof e.preventDefault==="function") e.preventDefault(); onKey(k);
+  if(G&&G._kbdScene!==G.scene) armArrivalKeys();
 }
 addEventListener("keydown",onArenaKey,true);
 function onArenaKeyUp(e){
-  if(e&&e.key) delete heldKeys[e.key];
+  if(e&&e.key){
+    delete heldKeys[e.key];
+    if(G&&G._armKeys) delete G._armKeys[e.key];
+  }
   if(G&&G._focusWait&&!arenaKeyHeld()){ G._focusWait=false; focusArenaNow(); }
 }
 addEventListener("keyup",onArenaKeyUp,true);
@@ -38084,8 +38125,9 @@ function rMap(){
   else {
     for(let y=0;y<m.N;y++)for(let x=0;x<m.N;x++){
       const X=ox+x*C, Y=oy+y*C;
-      if(!m.seen[y][x]){ cx.fillStyle="#07080a"; cx.fillRect(X,Y,C-2,C-2); continue; }
-      if(m.g[y][x]){ cx.fillStyle=m.ogre?"#2a1420":"#121820"; cx.fillRect(X,Y,C-2,C-2);
+      const face=(typeof fieldCellFace==="function")?fieldCellFace(m,x,y):(m.g[y][x]?"wall":"floor");
+      if(face==="fog"||face==="void"){ cx.fillStyle="#07080a"; cx.fillRect(X,Y,C-2,C-2); continue; }
+      if(face==="wall"){ cx.fillStyle=m.ogre?"#2a1420":"#121820"; cx.fillRect(X,Y,C-2,C-2);
         cx.fillStyle=m.ogre?"#3a1c2c":"#0c1016"; cx.fillRect(X+3,Y+3,C-8,C-8); }
       else { cx.fillStyle=m.ogre?"#180e14":"#13161c"; cx.fillRect(X,Y,C-2,C-2); }
     }
@@ -40508,10 +40550,7 @@ function step(){
   // it actually draws, and after four seconds it stops waiting at all, so a
   // decode failure can never strand you on the loading screen.
   if(G.scene===S.LOAD && (artReady() || (loadedN>=4 && G.t>75) || G.t>240)){ G.scene=S.TITLE; focusArena(); }
-  if(G.scene!==G._kbdScene){
-    G._kbdScene=G.scene;
-    if((G.scene===S.SELECT||G.scene===S.HOW) && !gameFocused) focusArena();
-  }
+  armArrivalKeys();
   /* the cabinet fights itself when nobody is standing at it. attractTick runs
      unconditionally so the demo's own clock advances while the scene is DUEL;
      the else branch zeroes the idle counter on every screen but the title.

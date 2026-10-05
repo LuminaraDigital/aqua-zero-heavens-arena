@@ -98,7 +98,8 @@ function mapPalette(ogre) {
       wallHi: "#1c2636",
       wallLo: "#0c1016",
       fog: "#141820",
-      fogGrain: "rgba(120,140,170,.28)",
+      /* Dark grain. A light speck on fog reads as an open floor tile. */
+      fogGrain: "rgba(0,0,0,.45)",
     exit: "#d8a24a",
     exitInk: "#0a0b0e",
     exitDim: "#20242e",
@@ -118,11 +119,26 @@ function mapPalette(ogre) {
    Tile painters - one cell each. Kept as local helpers so the field
    loop stays readable.
    --------------------------------------------------------------------- */
+/* What a cell is allowed to look like.
+   floor: walkable. wall: blocked, and seen or next to the player.
+   fog: blocked and still unexplored, and not a step the player can try.
+   A blocked neighbour is never "floor". That grey tile took the key
+   and did not move. */
+function fieldCellFace(m, x, y) {
+  if (!m || !m.g) return "void";
+  const N = m.N | 0;
+  if (x < 0 || y < 0 || x >= N || y >= N) return "void";
+  if (!m.g[y][x]) return "floor";
+  const seen = !!(m.seen && m.seen[y] && m.seen[y][x]);
+  const beside = Math.abs(x - (m.px | 0)) + Math.abs(y - (m.py | 0)) === 1;
+  if (seen || beside) return "wall";
+  return "fog";
+}
+
 function mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, t) {
   cx.fillStyle = pal.fog;
   cx.fillRect(X, Y, cw, ch);
-  /* soft patterned fog: a few alpha dots, not a flat black slab.
-     No grey stroke: that outline read as a tile you could walk onto. */
+  /* Dark dots only. Light specks on fog looked like a floor you could step on. */
   const pulse = 0.85 + 0.15 * Math.sin(mapNum(t) * 0.04 + x * 0.7 + y * 0.5);
   cx.fillStyle = pal.fogGrain;
   const dots = 3 + ((x * 3 + y * 5) & 1);
@@ -201,11 +217,12 @@ function paintMapField(cx, m, layout, t) {
     for (let x = 0; x < N; x++) {
       const X = ox + x * C;
       const Y = oy + y * C;
-      if (!m.seen[y] || !m.seen[y][x]) {
+      const face = fieldCellFace(m, x, y);
+      if (face === "fog" || face === "void") {
         mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, frame);
         continue;
       }
-      if (m.g[y][x]) mapPaintWallCell(cx, X, Y, cw, ch, pal);
+      if (face === "wall") mapPaintWallCell(cx, X, Y, cw, ch, pal);
       else mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y);
       mapPaintVignetteEdge(cx, X, Y, cw, ch, pal, m, x, y);
     }

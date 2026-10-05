@@ -524,4 +524,90 @@ module.exports = function (h) {
     const clip = A.exec("fitLine('e'+String.fromCharCode(0x0301)+'XTRA NAME', 5, 12, 800)");
     ok(String(clip).indexOf("\u0301") >= 0, "a clip does not cut a combining mark off its letter", clip);
   }
+
+  section("a blocked neighbour uses the wall draw");
+  {
+    const lum = (hex) => {
+      const n = parseInt(String(hex).replace("#", ""), 16);
+      return ((n >> 16) & 255) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11;
+    };
+    const spot = A.exec("(function(){" +
+      "SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=newAdv(0,0); newField(G.adv); G.scene=S.MAP; setFocused(true);" +
+      "function audit(m){" +
+      "  var dirs=[[1,0],[-1,0],[0,1],[0,-1]], bad=[];" +
+      "  dirs.forEach(function(d){" +
+      "    var x=m.px+d[0], y=m.py+d[1];" +
+      "    var face=fieldCellFace(m,x,y);" +
+      "    var oob=x<0||y<0||x>=m.N||y>=m.N;" +
+      "    var blocked=oob||!!(m.g[y]&&m.g[y][x]);" +
+      "    if(face==='floor'&&blocked) bad.push('floor-blocked '+x+','+y);" +
+      "    if(!blocked&&face!=='floor') bad.push('open-'+face+' '+x+','+y);" +
+      "    if(blocked&&!oob&&face!=='wall') bad.push('blocked-'+face+' '+x+','+y);" +
+      "  });" +
+      "  return bad;" +
+      "}" +
+      "var bad=[], guard=0;" +
+      "while(guard++<40 && G.adv.pool.length<6){" +
+      "  if(G.scene===S.BENEFIT){ onKey('a'); continue; }" +
+      "  if(G.scene!==S.MAP) break;" +
+      "  var m=G.adv.map; bad=bad.concat(audit(m));" +
+      "  var r=fieldRoute(m), s=r.path&&r.path[1];" +
+      "  if(!s) break;" +
+      "  var dx=s.x-m.px, dy=s.y-m.py;" +
+      "  if(Math.abs(dx)+Math.abs(dy)!==1) break;" +
+      "  if(m.g[s.y]&&m.g[s.y][s.x]) break;" +
+      "  var foe=(m.foes||[]).some(function(o){return !o.done&&o.x===s.x&&o.y===s.y;});" +
+      "  if(foe) break;" +
+      "  advMove(dx,dy);" +
+      "}" +
+      "if(G.scene===S.BENEFIT) onKey('a');" +
+      "var m=G.adv.map;" +
+      "if(G.scene===S.MAP && G.adv.pool.length>=6 && m.py>0 && !(m.g[m.py-1]&&m.g[m.py-1][m.px])){" +
+      "  var foeN=(m.foes||[]).some(function(o){return !o.done&&o.x===m.px&&o.y===m.py-1;});" +
+      "  if(!foeN) advMove(0,-1);" +
+      "}" +
+      "m=G.adv.map; bad=bad.concat(audit(m));" +
+      "var northFace=m.py>0?fieldCellFace(m,m.px,m.py-1):'void';" +
+      "var northBlocked=m.py<=0||!!(m.g[m.py-1]&&m.g[m.py-1][m.px]);" +
+      "var px=m.px, py=m.py, steps=m.steps;" +
+      "if(northBlocked) advMove(0,-1);" +
+      "var stayed=m.px===px&&m.py===py&&m.steps===steps;" +
+      "var route=fieldRoute(m), step=route.path&&route.path[1];" +
+      "var pal=mapPalette(false);" +
+      "var fills=[], cx={fillStyle:'',globalAlpha:1,fillRect:function(){fills.push(String(this.fillStyle));}};" +
+      "mapPaintWallCell(cx,0,0,28,28,pal);" +
+      "var wallFill=fills[0]; fills.length=0;" +
+      "mapPaintFloorCell(cx,0,0,28,28,pal,1,1);" +
+      "var floorFill=fills[0]; fills.length=0;" +
+      "mapPaintFogCell(cx,0,0,28,28,pal,2,2,0);" +
+      "var fogFill=fills[0];" +
+      "if(m.py>0){ m.g[m.py-1][m.px]=1; m.seen[m.py-1][m.px]=false; }" +
+      "var unseen=m.py>0?fieldCellFace(m,m.px,m.py-1):'void';" +
+      "return {bad:bad, deck:G.adv.pool.length, px:m.px, py:m.py, scene:G.scene," +
+      "  northFace:northFace, northBlocked:northBlocked, stayed:stayed, unseen:unseen," +
+      "  step:step?{x:step.x,y:step.y}:null," +
+      "  wall:pal.wall, floor:pal.floor, fog:pal.fog, wallHi:pal.wallHi," +
+      "  wallFill:wallFill, floorFill:floorFill, fogFill:fogFill, grain:pal.fogGrain};" +
+      "})()");
+    ok(spot && spot.deck >= 6, "the walk picks up the card and the deck reads 6", spot && spot.deck);
+    ok(spot && spot.bad.length === 0, "every open-floor neighbour is walkable, and every blocked neighbour is a wall",
+       spot && spot.bad.join("; "));
+    ok(spot && spot.northBlocked && spot.northFace === "wall" && spot.stayed,
+       "the refused step above the card is a wall and the player stays put",
+       spot && (spot.northFace + " stayed=" + spot.stayed + " at " + spot.px + "," + spot.py));
+    ok(spot && spot.unseen === "wall", "a blocked neighbour stays a wall when it has not been revealed", spot && spot.unseen);
+    ok(spot && spot.step && (spot.step.x !== spot.px || spot.step.y !== spot.py),
+       "the lit path still has a step off that tile", spot && JSON.stringify(spot.step));
+    ok(spot && spot.wallFill === spot.wall && spot.fogFill === spot.fog,
+       "blocked tiles take the wall fill and unexplored tiles take the fog fill",
+       spot && (spot.wallFill + " / " + spot.fogFill));
+    ok(spot && lum(spot.wall) < lum(spot.floor) && lum(spot.wallHi) < lum(spot.floor) && lum(spot.fog) < lum(spot.floor),
+       "wall and fog are darker than open floor",
+       spot && (spot.wall + " " + spot.wallHi + " " + spot.fog + " vs " + spot.floor));
+    ok(spot && String(spot.floorFill).indexOf(String(spot.wall)) < 0 && lum(spot.floor) > lum(spot.wall),
+       "the floor painter is the lighter tile", spot && spot.floorFill);
+    ok(PAGE.indexOf("rgba(120,140,170") < 0, "fog grain is not a light speck that reads as floor");
+    ok(PAGE.indexOf("function fieldCellFace") >= 0 && PAGE.indexOf('fogGrain: "rgba(0,0,0,.45)"') >= 0,
+       "the field asks each cell what it is, and fog grain is dark");
+  }
 };

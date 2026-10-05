@@ -246,6 +246,40 @@ module.exports = function (h) {
     A.exec("onArenaKeyUp({key:'z'});");
   }
 
+  section("fighter select confirms on a fresh Enter or Z");
+  {
+    const pd = "preventDefault:function(){}";
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; G._kbdScene=S.MENU; G._armKeys={}; G._focusWait=false; setFocused(true); focusArena.dom=0;");
+    A.exec("for(var k in heldKeys) delete heldKeys[k];");
+    A.exec("menuGoTo('adv');");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "SELECT", "Enter on New Adventure opens fighter select", scene());
+    ok(A.exec("!!(G._armKeys&&G._armKeys.Enter)") === true, "the Enter that opened select is remembered as already down");
+    frames(4);
+    ok(scene() === "SELECT", "holding that Enter does not also start the run", scene());
+    ok((A.exec("focusArena.dom||0")) === 0, "opening fighter select does not move keyboard focus", A.exec("focusArena.dom||0"));
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:true," + pd + "})");
+    ok(scene() === "SELECT", "a repeat of the arrival key is ignored", scene());
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "MAP", "a fresh Enter confirms on the first event", scene());
+    A.exec("onArenaKeyUp({key:'Enter'});");
+
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; G._kbdScene=S.MENU; G._armKeys={}; setFocused(true); focusArena.dom=0;");
+    A.exec("for(var k in heldKeys) delete heldKeys[k];");
+    A.exec("menuGoTo('adv');");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "SELECT", "the select screen is up with Enter still down", scene());
+    A.exec("onArenaKey({key:'z',code:'KeyZ',repeat:false," + pd + "})");
+    ok(scene() === "MAP", "a fresh Z confirms while Enter is still down", scene());
+    A.exec("onArenaKeyUp({key:'Enter'}); onArenaKeyUp({key:'z'});");
+
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0; G._kbdScene=S.SELECT; G._armKeys={}; setFocused(false);");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "MAP", "a fresh Enter confirms when focus was lost on the way in", scene());
+    A.exec("onArenaKeyUp({key:'Enter'});");
+    A.exec("for(var k in heldKeys) delete heldKeys[k];");
+  }
+
   section("X on the menu changes the difficulty the badge names");
   {
     A.exec("SAVE=DEF_SAVE(); persist(); SAVE.diff=3; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; setFocused(true);");
