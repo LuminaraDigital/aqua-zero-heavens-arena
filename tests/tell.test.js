@@ -45,6 +45,28 @@ module.exports = function (h) {
     ok(hint && hint.edge === 2, "and the sprawl is marked the hard counter", hint && hint.note);
   }
   {
+    /* A lesson hand has to show both answers, including when they are
+       only moving. A blank row is how the first fight taught nothing. */
+    const d = A.G.duel;
+    d.hotseat = false; d.eSuper = false; d.lessonFight = true;
+    d.eTech = A.TECH.ring_circle || A.TECH_IDS.map((id) => A.TECH[id]).find((t) => (t.flags || []).indexOf("circle") >= 0);
+    const move = A.intentFor(d);
+    ok(move && move.key === "MOVE", "a circle reads as movement", move && move.key);
+    const good = A.intentHint(d, d.p, A.TECH.basic_guard);
+    const bad = A.intentHint(d, d.p, A.TECH.cross);
+    ok(good && good.edge > 0, "covering a man who is only moving is a good answer", good && good.note);
+    ok(bad && bad.edge < 0, "swinging at him is a bad one", bad && bad.note);
+    const marks = A.exec("lessonMark(G.duel,{edge:1,note:'x'})+'|'+lessonMark(G.duel,{edge:-1,note:'y'})");
+    ok(marks.indexOf("GOOD") === 0 && marks.indexOf("BAD") > 0,
+       "the lesson stamps both words on the cards", marks);
+    d.eTech = A.TECH_IDS.map((id) => A.TECH[id]).find((t) => t.cls === "STRIKE" && t.range === "MID" && !(t.prio > 0));
+    const strike = A.intentFor(d);
+    ok(strike && (strike.key === "STRIKE_IN" || strike.key === "STRIKE_OUT"), "a committed strike still has a tell", strike && strike.key);
+    const soak = A.intentHint(d, d.p, A.TECH.basic_guard);
+    const trade = A.intentHint(d, d.p, A.TECH.cross);
+    ok(soak && soak.edge > 0 && trade && trade.edge < 0, "a strike tell marks the guard good and the trade bad");
+  }
+  {
     // hotseat gives nothing away
     const d = A.G.duel;
     d.hotseat = true;

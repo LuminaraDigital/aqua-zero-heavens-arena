@@ -88,19 +88,22 @@ function mapPalette(ogre) {
   }
   return {
     void: "#07080a",
-    floor: "#13161c",
-    floorAlt: "#161a22",
-    floorHi: "#222833",
-    floorLo: "#0c0e12",
-    wall: "#20242e",
-    wallHi: "#3a4150",
-    wallLo: "#14171e",
-    fog: "#07080a",
-    fogGrain: "rgba(30,34,42,.20)",
+      floor: "#243044",
+      floorAlt: "#2c3a50",
+      floorHi: "#3d4e68",
+      floorLo: "#152033",
+      /* Walls are darker than the floor. A light grey edge read as an
+         open tile you could step on, and Right did nothing. */
+      wall: "#121820",
+      wallHi: "#1c2636",
+      wallLo: "#0c1016",
+      fog: "#141820",
+      /* Dark grain. A light speck on fog reads as an open floor tile. */
+      fogGrain: "rgba(0,0,0,.45)",
     exit: "#d8a24a",
     exitInk: "#0a0b0e",
     exitDim: "#20242e",
-    grid: "#2a2d35",
+      grid: "#5c6b82",
     panel: "#0e1014",
     vignette: "rgba(4,5,8,.20)",
     ink: "#e8e6e1",
@@ -116,10 +119,26 @@ function mapPalette(ogre) {
    Tile painters - one cell each. Kept as local helpers so the field
    loop stays readable.
    --------------------------------------------------------------------- */
+/* What a cell is allowed to look like.
+   floor: walkable. wall: blocked, and seen or next to the player.
+   fog: blocked and still unexplored, and not a step the player can try.
+   A blocked neighbour is never "floor". That grey tile took the key
+   and did not move. */
+function fieldCellFace(m, x, y) {
+  if (!m || !m.g) return "void";
+  const N = m.N | 0;
+  if (x < 0 || y < 0 || x >= N || y >= N) return "void";
+  if (!m.g[y][x]) return "floor";
+  const seen = !!(m.seen && m.seen[y] && m.seen[y][x]);
+  const beside = Math.abs(x - (m.px | 0)) + Math.abs(y - (m.py | 0)) === 1;
+  if (seen || beside) return "wall";
+  return "fog";
+}
+
 function mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, t) {
   cx.fillStyle = pal.fog;
   cx.fillRect(X, Y, cw, ch);
-  /* soft patterned fog: a few alpha dots, not a flat black slab */
+  /* Dark dots only. Light specks on fog looked like a floor you could step on. */
   const pulse = 0.85 + 0.15 * Math.sin(mapNum(t) * 0.04 + x * 0.7 + y * 0.5);
   cx.fillStyle = pal.fogGrain;
   const dots = 3 + ((x * 3 + y * 5) & 1);
@@ -153,13 +172,12 @@ function mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y) {
 function mapPaintWallCell(cx, X, Y, cw, ch, pal) {
   cx.fillStyle = pal.wall;
   cx.fillRect(X, Y, cw, ch);
-  /* recessed core */
+  /* recessed core. The edge is a hairline, darker than the floor,
+     so a wall cannot be mistaken for a highlighted empty tile. */
   cx.fillStyle = pal.wallLo;
-  cx.fillRect(X + 3, Y + 4, cw - 6, ch - 7);
-  /* top highlight edge - the one read that sells "solid" */
+  cx.fillRect(X + 4, Y + 5, cw - 8, ch - 9);
   cx.fillStyle = pal.wallHi;
-  cx.fillRect(X + 1, Y + 1, cw - 2, 2);
-  cx.fillRect(X + 1, Y + 1, 1, ch - 3);
+  cx.fillRect(X + 1, Y + 1, cw - 2, 1);
 }
 
 function mapPaintVignetteEdge(cx, X, Y, cw, ch, pal, m, x, y) {
@@ -199,11 +217,12 @@ function paintMapField(cx, m, layout, t) {
     for (let x = 0; x < N; x++) {
       const X = ox + x * C;
       const Y = oy + y * C;
-      if (!m.seen[y] || !m.seen[y][x]) {
+      const face = fieldCellFace(m, x, y);
+      if (face === "fog" || face === "void") {
         mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, frame);
         continue;
       }
-      if (m.g[y][x]) mapPaintWallCell(cx, X, Y, cw, ch, pal);
+      if (face === "wall") mapPaintWallCell(cx, X, Y, cw, ch, pal);
       else mapPaintFloorCell(cx, X, Y, cw, ch, pal, x, y);
       mapPaintVignetteEdge(cx, X, Y, cw, ch, pal, m, x, y);
     }
@@ -264,7 +283,7 @@ function paintMapEntity(cx, kind, X, Y, C, opts) {
     }
     if (seen && o.label !== false) {
       cx.fillStyle = pal.exitInk;
-      cx.font = (ogre ? "bold 11px " : "bold 7px ") + "sans-serif";
+      cx.font = (ogre ? "bold 12px " : "bold 11px ") + "sans-serif";
       cx.textAlign = "center";
       cx.textBaseline = "middle";
       cx.fillText(ogre ? "T" : "EXIT", cx0, cy0 + 1);

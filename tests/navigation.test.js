@@ -37,11 +37,14 @@ module.exports = function (h) {
   }
   {
     // the technique list is not behind a category any more - it IS the
-    // command menu, and left/right filter it without leaving the screen
+    // command menu, and left/right move the cursor without leaving it
     toDuel();
+    const cat0 = A.G.duel.cmdCat;
+    const focus0 = A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()");
     press("right");
-    ok(phase() === "CMD" && A.G.duel.cmdCat === 1,
-       "left and right filter the list in place", phase() + " tab " + A.G.duel.cmdCat);
+    const focus1 = A.exec("(function(){ var d=G.duel; return cmdFocus(d,d.p,menuTechsFor(d,d.p)); })()");
+    ok(phase() === "CMD" && A.G.duel.cmdCat === cat0 && focus1 !== focus0,
+       "left and right move the cursor and stay on the hand", phase() + " " + focus0 + " -> " + focus1);
     A.exec("G.duel.ph=D.TECH;");
     press("b");
     ok(phase() === "CMD", "the old second step folds back into the one menu", phase());
@@ -162,8 +165,8 @@ module.exports = function (h) {
     ok(K.arenaAction("a", "SELECT") === "left", "the a key is a cursor key", K.arenaAction("a", "SELECT"));
     ok(K.arenaAction("z", "SELECT") === "a" && K.arenaAction("Enter", "SELECT") === "a" && K.arenaAction(" ", "SELECT") === "a",
        "Z, Enter and Space are what confirm");
-    ok(K.legendFor("a", "CONFIRM", "SELECT") === "A / Z - CONFIRM",
-       "so the legend says which key that is", K.legendFor("a", "CONFIRM", "SELECT"));
+    ok(K.legendFor("a", "CONFIRM", "SELECT") === "Z / ENTER - CONFIRM",
+       "so the legend names the keys that confirm, and not the A key that moves", K.legendFor("a", "CONFIRM", "SELECT"));
     /* every key a legend names must resolve to the action it is a legend
        for, on the scene it is printed on - the check that fails if a string
        and the table ever part ways again */
@@ -187,15 +190,15 @@ module.exports = function (h) {
        "on select X cycles difficulty, so B's key is ESC there", K.legendFor("b", "BACK", "SELECT"));
     ok(K.legendFor("diff", "DIFFICULTY", "SELECT") === "X - DIFFICULTY",
        "and the difficulty legend names only X there", K.legendFor("diff", "DIFFICULTY", "SELECT"));
-    ok(K.legendFor("diff", "DIFFICULTY", "TITLE") === "X / D - DIFFICULTY",
-       "while the title takes X or D", K.legendFor("diff", "DIFFICULTY", "TITLE"));
+    ok(K.legendFor("diff", "DIFFICULTY", "TITLE") === "X - DIFFICULTY",
+       "the title cycles difficulty with X, and D stays a movement key", K.legendFor("diff", "DIFFICULTY", "TITLE"));
     ok(K.legendFor("b", "BACK", "DUEL") === "B / X - BACK", "and in a fight X is back again", K.legendFor("b", "BACK", "DUEL"));
     ok(K.legendFor("y", "DOSSIER", "SELECT") === "Y / C - DOSSIER", "Y is C on the keyboard", K.legendFor("y", "DOSSIER", "SELECT"));
     /* the page helpers read the live scene */
     A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0;");
     ok(A.exec('LG("a","CONFIRM")') === K.legendFor("a", "CONFIRM", "SELECT"), "LG() on select is the select legend");
-    ok(A.exec('KH("a")') === "A / Z", "and KH() is the key head for a PRESS prompt", A.exec('KH("a")'));
-    ok(A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))') === "A / Z - CONFIRM   \u00B7   B / ESC - BACK",
+    ok(A.exec('KH("a")') === "Z / ENTER", "and KH() is the key head for a PRESS prompt", A.exec('KH("a")'));
+    ok(A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))') === "Z / ENTER - CONFIRM   \u00B7   B / ESC - BACK",
        "LGJ() joins with the footer's dot and drops blanks", A.exec('LGJ(LG("a","CONFIRM"),"",LG("b","BACK"))'));
     /* and the keys do what the footer now says: a moves, Z confirms */
     frames(1);
@@ -204,9 +207,17 @@ module.exports = function (h) {
     ok(scene() === "SELECT" && A.G.sel !== sel0, "pressing the a key moves the cursor", scene() + " sel " + A.G.sel);
     press(K.arenaAction("z", "SELECT"));
     ok(scene() === "MAP", "pressing Z confirms the fighter", scene());
+    A.exec("SAVE=DEF_SAVE(); persist(); G.adv=null; G.duel=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0; setFocused(true);");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',preventDefault:function(){}})");
+    ok(scene() === "MAP", "Enter confirms the fighter the footer names", scene());
+    A.exec("SAVE=DEF_SAVE(); persist(); G.adv=null; G.duel=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0; setFocused(true);");
+    A.exec("onArenaKey({key:'NumpadEnter',code:'NumpadEnter',preventDefault:function(){}})");
+    ok(scene() === "MAP", "the numpad Enter confirms too", scene());
     /* the on-screen pad's key captions come from the same table */
     A.exec("G.scene=S.SELECT;");
-    ok(K.arenaKeysFor("a", "SELECT")[0] === "Z" && K.arenaKeysFor("b", "SELECT")[0] === "ESC", "the pad captions would read Z and ESC on select");
+    ok(K.arenaKeysFor("a", "SELECT")[0] === "Z" && K.arenaKeysFor("b", "SELECT")[0] === "B",
+       "the pad captions read Z and B on select", K.arenaKeysFor("b", "SELECT").join(","));
+    ok(K.arenaKeysFor("b", "SELECT").indexOf("ESC") >= 0, "and ESC still goes back there");
     /* the controls page prints the derived strings, not hand-written ones */
     const how = A.exec("JSON.stringify(HOW_TOPICS)");
     ok(how.indexOf(K.legendFor("a", "CONFIRM")) >= 0, "the controls page prints the derived confirm legend");
@@ -215,5 +226,72 @@ module.exports = function (h) {
     K.setInputDevice("gamepad");
     ok(K.legendFor("a", "CONFIRM", "SELECT") === "(A) - CONFIRM", "a pad legend is the pad glyph", K.legendFor("a", "CONFIRM", "SELECT"));
     K.setInputDevice("keyboard");
+  }
+
+  section("the first confirm after New Adventure starts the run");
+  {
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; G._kbdScene=S.MENU; setFocused(true); focusArena.dom=0; G._focusWait=false;");
+    A.exec("menuGoTo('adv'); onKey('a');");
+    ok(scene() === "SELECT", "New Adventure arrives on fighter select", scene());
+    frames(2);
+    ok((A.exec("focusArena.dom||0")) === 0, "an arena that already has the keyboard is not refocused", A.exec("focusArena.dom||0"));
+    A.exec("onArenaKey({key:'Enter',code:'Enter',preventDefault:function(){}})");
+    ok(scene() === "MAP", "the first Enter starts the run", scene());
+    A.exec("onArenaKeyUp({key:'Enter'});");
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G._kbdScene=S.MENU; setFocused(true);");
+    A.exec("menuGoTo('adv'); onKey('a');");
+    frames(1);
+    A.exec("onArenaKey({key:'z',code:'KeyZ',preventDefault:function(){}})");
+    ok(scene() === "MAP", "the first Z starts the run too", scene());
+    A.exec("onArenaKeyUp({key:'z'});");
+  }
+
+  section("fighter select confirms on a fresh Enter or Z");
+  {
+    const pd = "preventDefault:function(){}";
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; G._kbdScene=S.MENU; G._armKeys={}; G._focusWait=false; setFocused(true); focusArena.dom=0;");
+    A.exec("for(var k in heldKeys) delete heldKeys[k];");
+    A.exec("menuGoTo('adv');");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "SELECT", "Enter on New Adventure opens fighter select", scene());
+    ok(A.exec("!!(G._armKeys&&G._armKeys.Enter)") === true, "the Enter that opened select is remembered as already down");
+    frames(4);
+    ok(scene() === "SELECT", "holding that Enter does not also start the run", scene());
+    ok((A.exec("focusArena.dom||0")) === 0, "opening fighter select does not move keyboard focus", A.exec("focusArena.dom||0"));
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:true," + pd + "})");
+    ok(scene() === "SELECT", "a repeat of the arrival key is ignored", scene());
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "MAP", "a fresh Enter confirms on the first event", scene());
+    A.exec("onArenaKeyUp({key:'Enter'});");
+
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; G._kbdScene=S.MENU; G._armKeys={}; setFocused(true); focusArena.dom=0;");
+    A.exec("for(var k in heldKeys) delete heldKeys[k];");
+    A.exec("menuGoTo('adv');");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "SELECT", "the select screen is up with Enter still down", scene());
+    A.exec("onArenaKey({key:'z',code:'KeyZ',repeat:false," + pd + "})");
+    ok(scene() === "MAP", "a fresh Z confirms while Enter is still down", scene());
+    A.exec("onArenaKeyUp({key:'Enter'}); onArenaKeyUp({key:'z'});");
+
+    A.exec("SAVE=DEF_SAVE(); persist(); G.duel=null; G.adv=null; G.selMode='adventure'; G.scene=S.SELECT; G.sel=0; G._kbdScene=S.SELECT; G._armKeys={}; setFocused(false);");
+    A.exec("onArenaKey({key:'Enter',code:'Enter',repeat:false," + pd + "})");
+    ok(scene() === "MAP", "a fresh Enter confirms when focus was lost on the way in", scene());
+    A.exec("onArenaKeyUp({key:'Enter'});");
+    A.exec("for(var k in heldKeys) delete heldKeys[k];");
+  }
+
+  section("X on the menu changes the difficulty the badge names");
+  {
+    A.exec("SAVE=DEF_SAVE(); persist(); SAVE.diff=3; G.scene=S.MENU; G.menuTab=0; G.menuSel=0; setFocused(true);");
+    ok(A.Keybindings.arenaAction("x", "MENU") === "diff", "X is the difficulty key on the menu");
+    ok(A.Keybindings.legendFor("diff", "DIFFICULTY", "MENU") === "X - DIFFICULTY",
+       "the menu badge can honestly say X", A.Keybindings.legendFor("diff", "DIFFICULTY", "MENU"));
+    const before = A.exec("SAVE.diff");
+    A.exec("onArenaKey({key:'x',code:'KeyX',preventDefault:function(){}})");
+    A.exec("onArenaKeyUp({key:'x'});");
+    ok(A.exec("SAVE.diff") !== before, "pressing X cycles the grade", A.exec("SAVE.diff"));
+    ok(A.exec("diff().name") === "ROOKIE", "HEAVENS CHAMPION wraps to ROOKIE", A.exec("diff().name"));
+    const drawn = A.exec("(function(){ globalThis.__txt=txt; globalThis.__cap=[]; txt=function(){ __cap.push(String(arguments[0])); return __txt.apply(this, arguments); }; G.scene=S.MENU; render(); var s=__cap.join(' '); txt=__txt; return s; })()");
+    ok(drawn.indexOf("[X]") >= 0 || drawn.indexOf("X - DIFFICULTY") >= 0, "the menu names X where it changes difficulty", drawn);
   }
 };

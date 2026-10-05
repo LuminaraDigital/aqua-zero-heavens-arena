@@ -47,7 +47,7 @@ var CardRenderer = (function () {
     bad:  { fg: "#8b5a4a", bg: "rgba(139, 90, 74, 0.24)" },
   };
   var LIVE_INK = "#f3f4f6";
-  var LIVE_DIM = "#7b8190";
+  var LIVE_DIM = "#d1d5db";
   var LIVE_RED = "#e6392f";
   var LIVE_AQUA = "#22d3ee";
 
@@ -91,10 +91,10 @@ var CardRenderer = (function () {
     cx.lineWidth = 1;
     cx.strokeRect(bx, by, bw, bh);
     cx.fillStyle = fg;
-    cx.font = "bold 8px 'Trebuchet MS', Bahnschrift, sans-serif";
+    cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
     cx.textAlign = "center";
     cx.textBaseline = "middle";
-    cx.fillText(clipText(cx, label, bw - 4, "bold 8px 'Trebuchet MS', Bahnschrift, sans-serif"), bx + bw / 2, by + bh / 2);
+    cx.fillText(clipText(cx, label, bw - 4, "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif"), bx + bw / 2, by + bh / 2);
   }
 
   /* Draws the whole lower half of a combat card from the live forecast.
@@ -102,8 +102,8 @@ var CardRenderer = (function () {
      the bottom edge so the face stays legible at the 124x98 hand size and
      at the taller vault size. */
   function paintLiveFace(cx, x, y, w, h, tech, live, selected, rowY) {
-    var rowH = 12;
-    var noteH = 12;
+    var rowH = 14;
+    var noteH = 16;
     var noteY = y + h - noteH - 3;
     var bigH = 30;
     var bigY = Math.max(rowY + rowH + 2, noteY - bigH - 2);
@@ -162,10 +162,10 @@ var CardRenderer = (function () {
     }
 
     cx.fillStyle = LIVE_DIM;
-    cx.font = "bold 7px 'Trebuchet MS', Bahnschrift, sans-serif";
-    cx.textAlign = "left";
-    cx.textBaseline = "top";
-    cx.fillText(dmgLabel, x + 9, bigY + 3);
+      cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.textAlign = "left";
+      cx.textBaseline = "top";
+      cx.fillText(dmgLabel, x + 9, bigY + 3);
 
     cx.fillStyle = dmgColor;
     cx.textBaseline = "middle";
@@ -174,7 +174,7 @@ var CardRenderer = (function () {
 
     if (isGuard) {
       cx.fillStyle = LIVE_DIM;
-      cx.font = "bold 7px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.textAlign = "right";
       cx.textBaseline = "top";
       cx.fillText("EFFECT", x + w - 9, bigY + 3);
@@ -186,7 +186,7 @@ var CardRenderer = (function () {
       cx.fillText("+FOCUS", x + w - 9, bigY + 16);
     } else {
       cx.fillStyle = LIVE_DIM;
-      cx.font = "bold 7px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.textAlign = "right";
       cx.textBaseline = "top";
       cx.fillText("HIT", x + w - 9, bigY + 3);
@@ -218,23 +218,6 @@ var CardRenderer = (function () {
       }
     }
 
-    // --- counter-play note: only the selected card has room for words ---
-    if (selected && live.note) {
-      cx.fillStyle = "rgba(15, 23, 42, 0.92)";
-      cx.fillRect(x + 5, noteY, w - 10, noteH);
-      cx.strokeStyle = "rgba(245, 158, 11, 0.5)";
-      cx.lineWidth = 1;
-      cx.strokeRect(x + 5, noteY, w - 10, noteH);
-      cx.fillStyle = live.noteColor || "#f0b849";
-      cx.fillRect(x + 5, noteY, 3, noteH);
-
-      var noteFont = "bold 7.5px 'Trebuchet MS', Bahnschrift, sans-serif";
-      cx.fillStyle = live.noteColor || "#f0b849";
-      cx.font = noteFont;
-      cx.textAlign = "left";
-      cx.textBaseline = "middle";
-      cx.fillText(clipText(cx, live.note, w - 20, noteFont), x + 11, noteY + noteH / 2);
-    }
   }
 
   function getTech(techId) {
@@ -354,6 +337,11 @@ var CardRenderer = (function () {
        and the card renders exactly as it always did. */
     var live = (opts.live && typeof opts.live === "object" && !Array.isArray(opts.live)) ? opts.live : null;
     var unaffordable = !!(live && live.affordable === false);
+    var lessonWord = "";
+    if (live && typeof live.note === "string") {
+      if (live.note.indexOf("GOOD") === 0) lessonWord = "GOOD";
+      else if (live.note.indexOf("BAD") === 0) lessonWord = "BAD";
+    }
 
     var discInfo = getDisciplineInfo(tech.disc);
     var discColor = discInfo.color || "#38bdf8";
@@ -597,16 +585,66 @@ var CardRenderer = (function () {
     cx.textBaseline = "middle";
     cx.fillText(catChipBadge, x + 16, y + 3 + bannerH / 2);
 
-    // Discipline / Archetype Name in Header
-    cx.fillStyle = "#ffffff";
-    cx.font = "bold 9.5px 'Trebuchet MS', Bahnschrift, sans-serif";
-    cx.textAlign = "left";
-    var maxDiscW = w - 40;
-    var fittedDisc = isSig ? "★ SPECIAL MOVE" : (isGuard ? "DEFENSE / GUARD" : discName);
-    if (cx.measureText(fittedDisc).width > maxDiscW) {
-      fittedDisc = fittedDisc.slice(0, 11) + "..";
+    // Discipline name and the GOOD/BAD badge share the banner.
+    // A mid-word clip ("MUAY TI..", "TAEKWO..") is worse than a real short form.
+    var badgeW = lessonWord ? 42 : 0;
+    var discShort = {
+      "MUAY THAI": "MUAY",
+      "TAEKWONDO": "TKD",
+      "BRAZILIAN JIU-JITSU": "BJJ",
+      "KICKBOXING": "KICKBOX",
+      "SHOTOKAN KARATE": "SHOTOKAN",
+      "KYOKUSHIN KARATE": "KYOKUSHIN",
+      "KENPO KARATE": "KENPO",
+      "SUBMISSION GRAPPLING": "SUB",
+      "JIU-JITSU": "JIU-JITSU",
+      "WRESTLING": "WRESTLE",
+      "GRAPPLING": "GRAPPLE"
+    };
+    var fittedDisc = isSig ? "SPECIAL" : (isGuard ? "GUARD" : discName);
+    var maxDiscW = w - 34 - (badgeW ? badgeW + 8 : 8);
+    function discWidth(label, size) {
+      cx.font = "bold " + size + "px 'Trebuchet MS', Bahnschrift, sans-serif";
+      return cx.measureText(label).width;
     }
+    var discSize = 9;
+    if (discWidth(fittedDisc, discSize) > maxDiscW) discSize = 8;
+    if (discWidth(fittedDisc, discSize) > maxDiscW && discShort[fittedDisc]) fittedDisc = discShort[fittedDisc];
+    if (discWidth(fittedDisc, discSize) > maxDiscW) {
+      var parts = fittedDisc.split(" ");
+      if (parts.length > 1 && discWidth(parts[0], discSize) <= maxDiscW) fittedDisc = parts[0];
+    }
+    if (discWidth(fittedDisc, discSize) > maxDiscW) {
+      var kept = "";
+      var chars = Array.from(fittedDisc);
+      for (var ci = 0; ci < chars.length; ci++) {
+        var trial = kept + chars[ci];
+        if (discWidth(trial, discSize) > maxDiscW) break;
+        kept = trial;
+      }
+      fittedDisc = kept;
+    }
+    cx.fillStyle = "#ffffff";
+    cx.font = "bold " + discSize + "px 'Trebuchet MS', Bahnschrift, sans-serif";
+    cx.textAlign = "left";
+    cx.textBaseline = "middle";
     cx.fillText(fittedDisc, x + 30, y + 3 + bannerH / 2);
+
+    if (lessonWord) {
+      var badgeH = Math.max(16, bannerH - 2);
+      var badgeX = x + w - badgeW - 4;
+      var badgeY = y + 4;
+      cx.fillStyle = lessonWord === "GOOD" ? "#065f46" : "#9f1239";
+      cx.fillRect(badgeX, badgeY, badgeW, badgeH);
+      cx.strokeStyle = lessonWord === "GOOD" ? "#6ee7b7" : "#fecdd3";
+      cx.lineWidth = 1.5;
+      cx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+      cx.fillStyle = lessonWord === "GOOD" ? "#ecfdf5" : "#fff1f2";
+      cx.font = "bold 11px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.textAlign = "center";
+      cx.textBaseline = "middle";
+      cx.fillText(lessonWord, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    }
 
     // 3. Technique Name
     cx.fillStyle = "#f8fafc";
@@ -622,7 +660,7 @@ var CardRenderer = (function () {
       if (words.length > 1) {
         fittedName = words[0] + " " + words[1].slice(0, 4) + "..";
       } else {
-        fittedName = fittedName.slice(0, 11) + "..";
+        fittedName = Array.from(fittedName).slice(0, 11).join("") + "..";
       }
     }
     cx.fillText(fittedName, x + 6, nameY);
@@ -750,6 +788,12 @@ var CardRenderer = (function () {
       cx.fillText(pointCost + " PTS", x + w / 2, pcY + 6.5);
     }
 
+    if (lessonWord) {
+      cx.strokeStyle = lessonWord === "GOOD" ? "#34d399" : "#fb7185";
+      cx.lineWidth = 4;
+      cx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+    }
+
     if (opts.comboIndex) {
       var glyph = COMBO_GLYPHS[opts.comboIndex - 1] || String(opts.comboIndex);
       var comboR = 10;
@@ -847,7 +891,7 @@ var CardRenderer = (function () {
         fanAngle: fanAngle,
         pitch: pitch,
         roll: roll,
-        scale: isSelected ? 1.08 : (isHovered ? 1.04 : 1.0),
+        scale: isSelected ? (opts.selectedScale || 1.08) : (isHovered ? (opts.hoverScale || 1.04) : 1.0),
         hotkeyBadge: opts.hotkeys !== false ? ("[" + (i + 1) + "]") : null,
         live: liveArr ? (liveArr[i] || null) : null,
       });

@@ -193,8 +193,15 @@ const AICommentary = (function() {
     if (commentaryHistory.length > 40) commentaryHistory.shift();
 
     if (typeof FloatingFeedback !== "undefined" && FloatingFeedback.add) {
-      const displayType = isPriority ? "CRITICAL COUNTER" : "TELL READ";
-      FloatingFeedback.add(line, 480, 180, displayType);
+      /* Stay under the health bars. The old call used the critical
+         popup, which is a 32px line that drifts upward into the HUD. */
+      FloatingFeedback.add(line, 480, 236, {
+        color: isPriority ? "#ff4d42" : "#e7fbff",
+        size: 18,
+        vy: 0,
+        lifetime: isPriority ? 110 : 75,
+        font: "'Rajdhani','Teko','Bahnschrift','Segoe UI Variable',sans-serif"
+      });
     }
 
     return item;

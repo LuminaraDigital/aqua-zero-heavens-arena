@@ -9,11 +9,13 @@ const FloatingFeedback = {
         let lifetime = 60; // frames
         let velocityY = -1.5;
 
+        let font = "'Rajdhani','Teko','Bahnschrift','Segoe UI Variable',sans-serif";
         if (typeof type === 'object' && type !== null) {
             if (type.color) color = type.color;
             if (type.size) size = type.size;
             if (type.lifetime || type.life) lifetime = type.lifetime || type.life;
-            if (type.vy || type.velocityY) velocityY = type.vy || type.velocityY;
+            if (type.vy !== undefined || type.velocityY !== undefined) velocityY = type.vy !== undefined ? type.vy : type.velocityY;
+            if (type.font) font = type.font;
         } else {
             switch (type) {
                 case 'UPSET':
@@ -93,7 +95,8 @@ const FloatingFeedback = {
             life: lifetime,
             vy: velocityY,
             scale: 1.35,
-            alpha: 1.0
+            alpha: 1.0,
+            font: font
         });
     },
 
@@ -139,7 +142,7 @@ const FloatingFeedback = {
             }
 
             // Glow / Shadow for crisp esports readability
-            ctx.font = `bold ${t.size}px "Bahnschrift", "Segoe UI Variable", Arial, sans-serif`;
+            ctx.font = "800 " + t.size + "px " + (t.font || "'Rajdhani','Teko','Bahnschrift','Segoe UI Variable',sans-serif");
             ctx.shadowColor = `rgba(0, 0, 0, ${Math.min(1.0, t.alpha * 0.9)})`;
             ctx.shadowBlur = 8;
             ctx.shadowOffsetY = 2;

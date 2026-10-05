@@ -80,14 +80,23 @@ module.exports = function (h) {
            "startDuel({p1:0,p1hp:200,p1pool:battlePool(0,9),oppFid:1,oppHp:200," +
            "oppPool:battlePool(1,9),oppLv:9,fromAdv:false,stage:3});");
     frames(700);
-    press("a");                       // the row under the cursor - no category gate
+    const ix = A.exec("(function(){ var d=G.duel; d.ph=D.CMD; d.cmdCat=0; d.cmdScroll=0; d.cmdKey=null;" +
+      "var list=menuTechsFor(d,d.p); var i;" +
+      "for(i=0;i<list.length;i++){ d.seq=[list[i]]; if(chainOptions(d,d.p).length){ cmdPoint(d,d.p,i,list); d.seq=null; return i; } }" +
+      "d.seq=null; return -1; })()");
+    ok(ix >= 0, "some technique has a follow-up", ix);
+    A.onKey("chain");
     const chained = phase() === "CHAIN";
-    ok(chained, "picking a technique offers a combination", phase());
+    ok(chained, "Q offers a combination", phase());
     if (chained) {
       ok(A.G.duel.seq.length === 1, "the chain opens on what you picked");
-      press("a");
-      ok(A.G.duel.seq.length >= 1, "adding a link works", A.G.duel.seq.length);
+      A.onKey("chain");
+      ok((A.G.duel.seq && A.G.duel.seq.length >= 1) || phase() !== "CHAIN",
+         "adding a link works", phase());
+      if (phase() === "CHAIN") A.onKey("b");
     }
+    if (phase() === "CMD") A.onKey("a");
+    ok(phase() !== "CHAIN", "confirm throws instead of opening the combination", phase());
     // and the whole fight must still resolve. G.duel persists past the bell -
     // the scene is what actually changes, which is what a naive exit condition
     // on G.duel gets wrong.
