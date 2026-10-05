@@ -88,19 +88,19 @@ function mapPalette(ogre) {
   }
   return {
     void: "#07080a",
-    floor: "#13161c",
-    floorAlt: "#161a22",
-    floorHi: "#222833",
-    floorLo: "#0c0e12",
-    wall: "#20242e",
-    wallHi: "#3a4150",
-    wallLo: "#14171e",
-    fog: "#07080a",
-    fogGrain: "rgba(30,34,42,.20)",
+      floor: "#243044",
+      floorAlt: "#2c3a50",
+      floorHi: "#3d4e68",
+      floorLo: "#152033",
+      wall: "#3d4c63",
+      wallHi: "#8b9bb3",
+      wallLo: "#1c2636",
+      fog: "#141820",
+      fogGrain: "rgba(120,140,170,.28)",
     exit: "#d8a24a",
     exitInk: "#0a0b0e",
     exitDim: "#20242e",
-    grid: "#2a2d35",
+      grid: "#5c6b82",
     panel: "#0e1014",
     vignette: "rgba(4,5,8,.20)",
     ink: "#e8e6e1",
@@ -119,6 +119,9 @@ function mapPalette(ogre) {
 function mapPaintFogCell(cx, X, Y, cw, ch, pal, x, y, t) {
   cx.fillStyle = pal.fog;
   cx.fillRect(X, Y, cw, ch);
+  cx.strokeStyle = "rgba(148,163,184,.45)";
+  cx.lineWidth = 1;
+  cx.strokeRect(X + 0.5, Y + 0.5, cw - 1, ch - 1);
   /* soft patterned fog: a few alpha dots, not a flat black slab */
   const pulse = 0.85 + 0.15 * Math.sin(mapNum(t) * 0.04 + x * 0.7 + y * 0.5);
   cx.fillStyle = pal.fogGrain;
@@ -264,7 +267,7 @@ function paintMapEntity(cx, kind, X, Y, C, opts) {
     }
     if (seen && o.label !== false) {
       cx.fillStyle = pal.exitInk;
-      cx.font = (ogre ? "bold 11px " : "bold 7px ") + "sans-serif";
+      cx.font = (ogre ? "bold 12px " : "bold 11px ") + "sans-serif";
       cx.textAlign = "center";
       cx.textBaseline = "middle";
       cx.fillText(ogre ? "T" : "EXIT", cx0, cy0 + 1);

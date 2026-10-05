@@ -47,7 +47,7 @@ var CardRenderer = (function () {
     bad:  { fg: "#8b5a4a", bg: "rgba(139, 90, 74, 0.24)" },
   };
   var LIVE_INK = "#f3f4f6";
-  var LIVE_DIM = "#7b8190";
+  var LIVE_DIM = "#d1d5db";
   var LIVE_RED = "#e6392f";
   var LIVE_AQUA = "#22d3ee";
 
@@ -91,10 +91,10 @@ var CardRenderer = (function () {
     cx.lineWidth = 1;
     cx.strokeRect(bx, by, bw, bh);
     cx.fillStyle = fg;
-    cx.font = "bold 8px 'Trebuchet MS', Bahnschrift, sans-serif";
+    cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
     cx.textAlign = "center";
     cx.textBaseline = "middle";
-    cx.fillText(clipText(cx, label, bw - 4, "bold 8px 'Trebuchet MS', Bahnschrift, sans-serif"), bx + bw / 2, by + bh / 2);
+    cx.fillText(clipText(cx, label, bw - 4, "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif"), bx + bw / 2, by + bh / 2);
   }
 
   /* Draws the whole lower half of a combat card from the live forecast.
@@ -102,8 +102,8 @@ var CardRenderer = (function () {
      the bottom edge so the face stays legible at the 124x98 hand size and
      at the taller vault size. */
   function paintLiveFace(cx, x, y, w, h, tech, live, selected, rowY) {
-    var rowH = 12;
-    var noteH = 12;
+    var rowH = 14;
+    var noteH = 16;
     var noteY = y + h - noteH - 3;
     var bigH = 30;
     var bigY = Math.max(rowY + rowH + 2, noteY - bigH - 2);
@@ -162,10 +162,10 @@ var CardRenderer = (function () {
     }
 
     cx.fillStyle = LIVE_DIM;
-    cx.font = "bold 7px 'Trebuchet MS', Bahnschrift, sans-serif";
-    cx.textAlign = "left";
-    cx.textBaseline = "top";
-    cx.fillText(dmgLabel, x + 9, bigY + 3);
+      cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.textAlign = "left";
+      cx.textBaseline = "top";
+      cx.fillText(dmgLabel, x + 9, bigY + 3);
 
     cx.fillStyle = dmgColor;
     cx.textBaseline = "middle";
@@ -174,7 +174,7 @@ var CardRenderer = (function () {
 
     if (isGuard) {
       cx.fillStyle = LIVE_DIM;
-      cx.font = "bold 7px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.textAlign = "right";
       cx.textBaseline = "top";
       cx.fillText("EFFECT", x + w - 9, bigY + 3);
@@ -186,7 +186,7 @@ var CardRenderer = (function () {
       cx.fillText("+FOCUS", x + w - 9, bigY + 16);
     } else {
       cx.fillStyle = LIVE_DIM;
-      cx.font = "bold 7px 'Trebuchet MS', Bahnschrift, sans-serif";
+      cx.font = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.textAlign = "right";
       cx.textBaseline = "top";
       cx.fillText("HIT", x + w - 9, bigY + 3);
@@ -228,7 +228,7 @@ var CardRenderer = (function () {
       cx.fillStyle = live.noteColor || "#f0b849";
       cx.fillRect(x + 5, noteY, 3, noteH);
 
-      var noteFont = "bold 7.5px 'Trebuchet MS', Bahnschrift, sans-serif";
+      var noteFont = "bold 10px 'Trebuchet MS', Bahnschrift, sans-serif";
       cx.fillStyle = live.noteColor || "#f0b849";
       cx.font = noteFont;
       cx.textAlign = "left";

@@ -3,7 +3,6 @@ const CACHE_NAME = "azha-v1";
 const ASSETS = [
   "./",
   "./aqua-zero-heavens-arena.html",
-  "./manifest.json",
   "./icon-180.png"
 ];
 

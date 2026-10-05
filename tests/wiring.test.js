@@ -393,7 +393,8 @@ module.exports = function (h) {
     ok(scene() === "BRIEF", "the brief renders his card", scene());
     X("startDuel({fromAdv:true,oppFid:" + rival + ",oppHp:90,oppPool:[0,1,2,3,4],oppLv:4,stage:1}); 1");
     ok(X("G.duel.nemesis") === true, "and the bell knows what he is");
-    ok(X("G.duel.e.atkMul") > X("mkSide(" + rival + ",90,[0,1,2,3,4],{level:4}).atkMul"),
+    ok(X("(function(){ var base=mkSide(" + rival + ",90,[0,1,2,3,4],{level:4}).atkMul;" +
+         " var floor=G.duel.lessonFight?0.6:1; return G.duel.e.atkMul>base*floor; })()") === true,
        "he comes in a little up, as a nemesis always has");
   }
   {

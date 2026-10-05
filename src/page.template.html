@@ -1,5 +1,4 @@
 <title>Aqua Zero Heavens Arena</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0b0f">
 <!-- Without this a phone lays the page out at 980px and then shrinks it: the
      whole arena rendered at 40% and every 10px label turned to mush. It also
@@ -9,7 +8,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icon-180.png">
+<!-- Inline so a lone built page does not ask the server for favicon.ico. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2307080c'/%3E%3Cpath d='M8 24 L16 6 L24 24' fill='none' stroke='%2322d3ee' stroke-width='3'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Rajdhani:wght@600;700;800&family=Teko:wght@600;700&display=swap" rel="stylesheet">
@@ -340,14 +340,14 @@
   .pad.c{grid-area:2/2; background:#0f1117; cursor:default; box-shadow:none; border-color:transparent}
   .pad.r{grid-area:2/3; border-radius:0 10px 10px 0} .pad.d{grid-area:3/2; border-radius:0 0 10px 10px}
 
-  .hintrow{text-align:center; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#788090; line-height:2.2}
+  .hintrow{text-align:center; font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#e5e7eb; line-height:2.2}
   .hintrow kbd{
     background:linear-gradient(180deg,#1c212c,#141720);
     border:1px solid var(--line-hi); color:#d1d5db; border-radius:5px;
     padding:2px 8px; font:inherit; font-size:10px; font-weight:700;
     box-shadow:0 2px 4px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
   }
-  .kbstate{display:block; font-size:9.5px; letter-spacing:.18em; color:#596170; margin-top:2px; transition:color .18s}
+  .kbstate{display:block; font-size:13px; letter-spacing:.12em; color:#e5e7eb; margin-top:2px; transition:color .18s}
   .ctx{display:flex; justify-content:center; gap:18px; flex-wrap:wrap; margin-bottom:4px}
   .ctx b{
     display:inline-block; min-width:19px; text-align:center;
@@ -2045,6 +2045,39 @@ function mkSide(fid,hp,pool,opt){
   s.atkMul*=1+(top-55)/260;
   return s;
 }
+/* The first fights of a fresh stage-one run are a lesson, not a filter.
+   A later patrol is still one exchange. A save that has already fought,
+   or a new-game-plus run, keeps the ordinary rules. */
+function lessonFightOf(opts){
+  if(!opts||!opts.fromAdv||opts.lesson===false) return false;
+  const a=G.adv;
+  if(!a) return false;
+  if((a.ng||0)>0) return false;
+  if((a.stage||1)!==1) return false;
+  if((a.fights||0)>=2) return false;
+  const duels=(SAVE&&SAVE.rec&&SAVE.rec.duels)||0;
+  if(duels>=3) return false;
+  if(SAVE&&SAVE.onboarding&&SAVE.onboarding.done) return false;
+  return true;
+}
+/* One idea on screen for this beat of a teaching fight. */
+function teachBeat(d){
+  if(!d||!d.lessonFight) return null;
+  if(d.ph===D.DEFEND||d.ph===D.JUGGLE||d.ph===D.SUPER)
+    return {id:"timing", line:"HIT THE WINDOW. PRESS ON THE MARK."};
+  const t=d.turn|0;
+  if(t<=0) return {id:"tell", line:"READ THE TELL. THE LINE UNDER THEM SAYS WHAT IS COMING."};
+  if(t===1) return {id:"answer", line:"ANSWER THE TELL. GREEN ON A CARD IS GOOD. RED WALKS INTO IT."};
+  return {id:"timing", line:"HIT THE WINDOW. WHEN THE RING CLOSES, PRESS ON THE MARK."};
+}
+/* What the card they just chose did with the tell. Visible, not implied. */
+function gradeTell(d, tech){
+  const h=(typeof intentHint==="function")?intentHint(d, d&&d.p, tech):null;
+  if(!h) return "NO READ ON THAT CARD";
+  if(h.edge>0) return "ANSWERED THE TELL. "+h.note;
+  if(h.edge<0) return "BAD ANSWER. "+h.note;
+  return "NO READ ON THAT CARD";
+}
 function startDuel(opts){
   /* A ladder session only survives ladder bouts. Anything else seated here -
      a tower floor, an exhibition, the daily - closes it, so a stale session
@@ -2112,6 +2145,27 @@ function startDuel(opts){
   };
   d.p.maxhp=opts.fromAdv?a.maxhp:heroHp;
   d.p.ghost=d.p.hp; d.e.ghost=d.e.hp;
+  /* Teaching bouts have to survive the first exchange, or the tell,
+     the answer, and the timing window never get a turn. The floor and
+     the softer hands live only on this bout. Later fights are untouched. */
+  d.lessonFight=lessonFightOf(opts);
+  if(d.lessonFight){
+    const floor=110;
+    if((d.e.hp||0)<floor){
+      d.e.maxhp=Math.max(d.e.maxhp||0, floor);
+      d.e.hp=floor;
+      d.e.ghost=d.e.hp;
+    }
+    d.e.atkMul=(d.e.atkMul||1)*0.6;
+  }
+  {
+    const noteRun=(opts.fromAdv&&a)?a:((opts.endless&&G.endless)?G.endless:null);
+    if(noteRun&&noteRun.handNote&&noteRun.handNote.id&&TECH[noteRun.handNote.id]){
+      d.handNote={id:noteRun.handNote.id,
+                  name:noteRun.handNote.name||TECH[noteRun.handNote.id].name};
+      noteRun.handNote=null;
+    }
+  }
   // the fight opens where the hero's arts want it
   d.range=opts.range||homeRanges(d.p.discs)[0]||"MID";
   // camp benefits are the player's, and they apply once, at the bell
@@ -2173,7 +2227,7 @@ function startDuel(opts){
      chain, the same juggle - and then turnEnd reads the ledger the resolver
      itself wrote and calls it. Never the boss, never a rival, never a mode
      other than the run. */
-  d.oneShot=!!(opts.tf&&opts.fromAdv);
+  d.oneShot=!!(opts.tf&&opts.fromAdv)&&!d.lessonFight;
   d.encounter=encounterWeightOf(opts);
   /* the bell's HP on both sides, so "who took the worse of it" is measured
      from the real numbers rather than a second tally that could disagree */
@@ -2273,6 +2327,8 @@ function beginRound(d){
   }
   // the corner read: bought vision carries across turns
   if(d.peekTurns>0){ d.readShown=true; d.peekTurns--; }
+  /* The learned card leads the opening hand. Later turns keep the player's tab. */
+  if(d.handNote&&(d.turn|0)===0) pinLearnedHand(d);
 }
 /* what can legitimately follow what you have committed so far */
 function chainOptions(d,side){
@@ -2410,7 +2466,25 @@ function menuTechsFor(d,side){
   } else {
     out=techMenuFromList(side.techs,key,d.range).map(id=>TECH[id]);
   }
-  return sortCmdRows(d,side,out.filter(tq=>tq&&posOk(d,side,tq)));
+  return promoteHandNote(d,side,sortCmdRows(d,side,out.filter(tq=>tq&&posOk(d,side,tq))));
+}
+/* A technique learned since the last fight is put on the front of the
+   hand, including when the menu cap would have left it off screen. */
+function pinLearnedHand(d){
+  if(!d||!d.handNote||!d.handNote.id||!TECH[d.handNote.id]) return;
+  d.cmdCat=0; d.cmdKey=d.handNote.id; d.cmdSel=0; d.cmdScroll=0;
+}
+function promoteHandNote(d, side, rows){
+  rows=rows||[];
+  if(!d||side!==d.p||!d.handNote||!TECH[d.handNote.id]) return rows;
+  const id=d.handNote.id, tech=TECH[id];
+  const key=cmdTabKey(d,side);
+  const cat=CATEGORY_OF[tech.cls];
+  if(key!=="ALL"&&key!==cat) return rows;
+  const ix=rows.findIndex(t=>t&&t.id===id);
+  if(ix>0) rows.unshift(rows.splice(ix,1)[0]);
+  else if(ix<0) rows.unshift(tech);
+  return rows;
 }
 function menuTechs(d){ return menuTechsFor(d,d.p); }
 /* The cursor is remembered by technique id and only falls back to the index,
@@ -3000,6 +3074,7 @@ function resolveDefence(d,q){
     }
   }
   else if(q<2) callout(d,"GUARDED");
+  else if(d.lessonFight) callout(d,"WINDOW MISSED");
   commitEvent(d, q<1?.42:q<2?.72:1);
   if(q<2) d.msg2=(q<1?"PERFECT GUARD - DAMAGE CUT 58% (+1 FOCUS)":"GUARDED - DAMAGE CUT 28%");
 }
@@ -3535,7 +3610,7 @@ function endDuel(d){
           if(got){ SAVE.unlocked.push(id); SAVE.unlocked.sort((x,y)=>x-y); unlockName=FIGHTERS[id].name; }
         }
       }
-      msg=(perfect?"PERFECT! ":"")+"+"+(d.tf?6+(perfect?4:0):10+(perfect?4:0))+" CARD POINTS";
+      msg=(perfect?"PERFECT! ":"")+"+"+(d.tf?6+(perfect?4:0):10+(perfect?4:0))+" CARD POINTS. 10 BUYS A LEVEL AT A TEMPLE";
       G.result={kind:"win",unlockName,msg,perfect,ladder:ladder,encounter:d.encounter};
       saveRun();
     } else if(d.repel){
@@ -5313,8 +5388,9 @@ function onKey(k){
     if(k==="a"){
       const id=G.draftPick[G.draftSel], res=applyDraft(runner,id);
       if(!res){ sDeny(); return; }
+      runner.handNote={id:res.id, name:res.tech.name};
       saveRun(); G.scene=destScene; sPick();
-      say("Learned "+res.tech.name+". "+draftSummary(runner));
+      say("Learned "+res.tech.name+". It leads the next hand. "+draftSummary(runner));
     }
     return;
   }
@@ -5653,6 +5729,10 @@ function duelKey(k){
         sPick(); next(); return;
       }
       if(side===d.p) d.pTech=tech; else d.eTech=tech;
+      if(side===d.p&&d.lessonFight){
+        d.tellGrade=gradeTell(d, tech);
+        callout(d, d.tellGrade, 90);
+      }
       sPick();
       // a technique that something legitimately follows opens the combination
       // menu; everything else just gets thrown
@@ -5846,6 +5926,11 @@ function panel(x,y,w,h,fill,stroke,glow,radius){
   cx.fillRect(x+r,y+1,Math.max(0,w-2*r),1);
   cx.restore();
 }
+/* Patrols used to paint the borrowed fighter with brightness(0), which
+   read as a dead black silhouette next to a lit player. The name stays
+   AZX FORCE. The body is the borrowed art, lit the same way the player is.
+   Art is embedded, so this holds on file:// and on a local server. */
+function ringSilhouette(){ return false; }
 function drawFighterArt(fid,cxr,baseY,maxH,flip,silhouette,alpha,flash,rot){
   if(isCustomFighter(fid)){
     const sz = Math.min(maxH * 0.55, 180);
@@ -8393,16 +8478,16 @@ function rSelect(){
 
   const id=list[G.sel], b=bioOf(id);
 
-  // Left Staging: Massive High-Res Fighter Cutout with Breathing Sway
+  // Left Staging: fighter cutout kept above the roster so four rows fit.
   const sway = motionOn() ? Math.sin(G.t / 18) * 4.5 : 0;
-  drawFighterArt(id, 230, 360 + sway, 330, false, false, 1.0);
-  panel(40, 296, 260, 64, "rgba(8,11,16,.88)", "#283042", "rgba(34,211,238,.12)", 6);
-  txt(FIGHTERS[id].name, 54, 318, 17, INK, "left", 900);
-  if(b){ txt("OVR " + b.ovr + " \u00B7 " + b.div.toUpperCase() + " \u00B7 " + ftIn(b.ht) + '" \u00B7 ' + b.wt + "LB", 54, 340, 10, GOLD, "left", 700); }
+  drawFighterArt(id, 210, 300 + sway, 250, false, false, 1.0);
+  panel(40, 232, 260, 58, "rgba(8,11,16,.88)", "#283042", "rgba(34,211,238,.12)", 6);
+  txt(FIGHTERS[id].name, 54, 254, 16, INK, "left", 900);
+  if(b){ txt("OVR " + b.ovr + " \u00B7 " + b.div.toUpperCase() + " \u00B7 " + ftIn(b.ht) + '" \u00B7 ' + b.wt + "LB", 54, 276, 12, GOLD, "left", 700); }
 
   // Right Staging: Exhibition setup panel, or radar + signature for other modes
   const vsMode=G.selMode==="vs1"||G.selMode==="vs2";
-  panel(480, 56, 440, 304, "rgba(10,13,20,.94)", "#252d3d", "rgba(34,211,238,.08)", 10);
+  panel(480, 52, 440, 248, "rgba(10,13,20,.94)", "#252d3d", "rgba(34,211,238,.08)", 10);
   if(vsMode&&typeof ExhibitionMode!=="undefined"){
     txt("EXHIBITION SETUP", 500, 78, 12, AQUA, "left", 800);
     const career=ExhibitionMode.careerLine(SAVE);
@@ -8417,7 +8502,7 @@ function rSelect(){
     }
     const rows=ExhibitionMode.optionRows();
     rows.forEach((row,i)=>{
-      const y=118+i*22;
+      const y=92+i*16;
       const on=(G.vsOpt|0)===i;
       if(on){ cx.fillStyle="rgba(34,211,238,.10)"; cx.fillRect(492,y-12,416,20); }
       txt("["+row.hint+"]", 500, y, 9.5, on?AQUA:DIM, "left", 700);
@@ -8425,7 +8510,7 @@ function rSelect(){
       txt(row.value, 910, y, 10.5, on?GOLD:INK, "right", 800);
       hot(492, y-12, 416, 20, ()=>{ G.vsOpt=i; }, ()=>{ G.vsOpt=i; onKey(String(i+1)); });
     });
-    txt("R - RANDOM   ·   1-8 CYCLE SETUP", 700, 340, 9, DIM, "center", 600);
+    txt("R - RANDOM   ·   1-8 CYCLE SETUP", 700, 286, 12, INK, "center", 700);
   } else {
     if(typeof StatRadar!=="undefined"&&StatRadar.render){
       StatRadar.render(cx, 575, 180, 62, b ? b.a : null, { strokeColor: AQUA, fillColor: "rgba(34,211,238,.22)" });
@@ -8438,17 +8523,18 @@ function rSelect(){
     txt("HP: " + tr.hp + "   FOCUS: " + tr.foc, 670, 142, 10, INK, "left", 700);
     txt("AIR TIERS: " + t[0] + "/" + t[1] + "/" + t[2] + "  TOP: " + Math.max(...d.slice(0,12).map(c=>c[0])), 670, 162, 9.5, DIM, "left", 600);
 
-    panel(668, 184, 240, 162, "rgba(16,21,32,.92)", GOLD, "rgba(245,158,11,.1)", 6);
+    panel(668, 168, 240, 118, "rgba(16,21,32,.92)", GOLD, "rgba(245,158,11,.1)", 6);
     const sigTech = FIGHTERS[id].sig ? TECH[FIGHTERS[id].sig] : null;
-    txt("SIGNATURE TECHNIQUE", 682, 202, 10, GOLD, "left", 800);
-    txt(sigTech ? sigTech.name.toUpperCase() : "HEAVENS DRIVE", 682, 222, 12.5, INK, "left", 800);
-    txt(sigTech ? (sigTech.cls + " \u00B7 " + sigTech.range + " RANGE \u00B7 POW " + sigTech.power) : "MAXIMUM IMPACT", 682, 240, 9.5, AQUA, "left", 700);
-    txt(sigTech && sigTech.desc ? sigTech.desc : "Unleashes devastating kinetic burst on impact.", 682, 262, 9, DIM, "left", 600);
-    txt("ARM REQUIREMENT: 50+ METER", 682, 326, 8.5, GOLD, "left", 700);
+    txt("SIGNATURE TECHNIQUE", 682, 186, 11, GOLD, "left", 800);
+    txt(sigTech ? sigTech.name.toUpperCase() : "HEAVENS DRIVE", 682, 206, 13, INK, "left", 800);
+    txt(sigTech ? (sigTech.cls + " \u00B7 " + sigTech.range + " RANGE \u00B7 POW " + sigTech.power) : "MAXIMUM IMPACT", 682, 224, 11, AQUA, "left", 700);
+    txt(sigTech && sigTech.desc ? sigTech.desc : "Unleashes devastating kinetic burst on impact.", 682, 244, 11, INK, "left", 600);
+    txt("ARM REQUIREMENT: 50+ METER", 682, 270, 11, GOLD, "left", 700);
   }
 
-  // Bottom 2-Row Roster Ribbon (x: 40..920, y: 372..484)
-  const cw = 120, ch = 52, ox = 40, oy = 372, gapX = 6, gapY = 4;
+  // Four roster rows, all above the footer. 25 fighters, 7 columns.
+  const rib = rosterRibbon();
+  const cw = rib.cw, ch = rib.ch, ox = rib.ox, oy = rib.oy, gapX = rib.gapX, gapY = rib.gapY;
   list.forEach((fid,i)=>{
     const col = i % 7, row = Math.floor(i / 7);
     const x = ox + col * (cw + gapX), y = oy + row * (ch + gapY);
@@ -8464,15 +8550,18 @@ function rSelect(){
       cx.fillStyle = AQUA;
       cx.fillRect(x, y, 4, ch);
     } else {
-      panel(x, y, cw, ch, "#101218", "#222734", null, 6);
+      panel(x, y, cw, ch, "#1c2433", "#4b5c78", null, 6);
     }
 
-    drawPortrait(fid, x + 4, y + 4, 44, 44, false);
-    if(mastered){ txt("\u2713", x + cw - 9, y + 14, 10.5, GOLD, "center", 800); }
+    const ps=Math.min(34, ch-8);
+    drawPortrait(fid, x + 4, y + 4, ps, ps, false);
+    if(mastered){ txt("\u2713", x + cw - 10, y + 14, 12, GOLD, "center", 800); }
     const nm = FIGHTERS[fid].name;
-    txt(nm, x + 52, y + 22, nm.length > 12 ? 8.5 : 9.5, on ? AQUA : INK, "left", 700);
-    txt(fBio ? fBio.div.slice(0, 8) : "AZHA", x + 52, y + 38, 8, isCustomFighter(fid) ? AQUA : DIM, "left", 600);
-    if(isCustomFighter(fid)) txt("ENTRY", x + cw - 9, y + 38, 8, AQUA, "center", 800);
+    const nameY=ch>=40?y+18:y+Math.round(ch*0.45);
+    const divY=ch>=40?y+34:y+ch-6;
+    txt(nm, x + 42, nameY, nm.length > 12 ? 11 : 12, on ? AQUA : INK, "left", 800);
+    txt(fBio ? fBio.div.slice(0, 8) : "AZHA", x + 42, divY, 11, isCustomFighter(fid) ? AQUA : "#e5e7eb", "left", 700);
+    if(isCustomFighter(fid)) txt("ENTRY", x + cw - 16, y + 34, 10, AQUA, "center", 800);
 
     hot(x, y, cw, ch, () => { G.sel = i; }, () => { G.sel = i; onKey("a"); });
   });
@@ -8483,8 +8572,33 @@ function rSelect(){
   txt(G.selMode==="browse"?LGJ(LG("a","DOSSIER"),LG("b","BACK"))
       :(vsMode?LGJ(LG("a","CONFIRM"),LG("y","DOSSIER"),LG("rand","RANDOM"),LG("code","CODE"),"1-8 SETUP",LG("b","BACK"))
               :LGJ(LG("a","CONFIRM"),LG("y","DOSSIER"),LG("diff","DIFFICULTY"),LG("b","BACK"))),
-      W/2, footerY + 18, 10.5, DIM, "center", 700);
+      W/2, footerY + 18, 13, INK, "center", 800);
   artNote();
+}
+/* Geometry for the fighter-select ribbon. Four rows of 25 fighters have to
+   finish above the footer on the 960x540 canvas, which is what 1280x800
+   letterboxes. */
+function rosterRibbon(){
+  const list=selList();
+  const rows=Math.max(1, Math.ceil(list.length/SEL_COLS));
+  const cw=122, ox=32, gapX=6;
+  const footerY=H-40;
+  /* Four rows of the stock 25 finish at 488, above the footer at 500.
+     A registered fighter adds a row, and that row still has to clear it. */
+  let ch=42, oy=308, gapY=4;
+  let bottom=oy+(rows-1)*(ch+gapY)+ch;
+  const limit=footerY-4;
+  if(bottom>limit){
+    gapY=3;
+    const room=limit-oy;
+    ch=Math.floor((room-(rows-1)*gapY)/rows);
+    if(ch<26){
+      ch=26; gapY=2;
+      oy=Math.max(280, limit-((rows-1)*(ch+gapY)+ch));
+    }
+    bottom=oy+(rows-1)*(ch+gapY)+ch;
+  }
+  return {rows, cw, ch, ox, oy, gapX, gapY, footerY, bottom};
 }
 
 /* ---------- fighter dossier ---------- */
@@ -8558,6 +8672,78 @@ function rFighter(){
   if(rec) txt("RECORD "+rec.w+"-"+rec.l,16,H-9,10,GRN,"left",700);
   txt("< > FIGHTER    B - BACK",W-16,H-14,11,DIM,"right",700);
 }
+function fieldTargets(m){
+  const out=[];
+  if(!m) return out;
+  (m.foes||[]).forEach(f=>{ if(!f.done) out.push({x:f.x|0,y:f.y|0,kind:f.boss?"TOWER":(f.tf?"FORCE":"RIVAL")}); });
+  (m.camps||[]).forEach(c=>out.push({x:c.x|0,y:c.y|0,kind:"CAMP"}));
+  (m.gyms||[]).forEach(g=>{ if(!g.used) out.push({x:g.x|0,y:g.y|0,kind:"GYM"}); });
+  (m.temples||[]).forEach(t=>{ if(!t.used) out.push({x:t.x|0,y:t.y|0,kind:"TEMPLE"}); });
+  (m.cards||[]).forEach(c=>{ if(!c.used) out.push({x:c.x|0,y:c.y|0,kind:"CARD"}); });
+  return out;
+}
+function fieldExit(m){
+  return {x:14, y:(m&&m.exitY)|0, kind:(m&&m.ogre)?"TOWER":"EXIT"};
+}
+function fieldWalk(m, targets){
+  if(!m||!m.g||!targets||!targets.length) return null;
+  const N=m.N|0;
+  if(N<2) return null;
+  const key=(x,y)=>y*N+x;
+  const want={};
+  targets.forEach(t=>{
+    if(t.x<0||t.y<0||t.x>=N||t.y>=N) return;
+    if(m.g[t.y]&&m.g[t.y][t.x]) return;
+    want[key(t.x,t.y)]=t;
+  });
+  const sx=m.px|0, sy=m.py|0;
+  if(sx<0||sy<0||sx>=N||sy>=N) return null;
+  const prev=new Array(N*N);
+  for(let i=0;i<prev.length;i++) prev[i]=-2;
+  const start=key(sx,sy);
+  prev[start]=-1;
+  const q=[[sx,sy]];
+  let found=null, qi=0;
+  while(qi<q.length){
+    const cur=q[qi++], ck=key(cur[0],cur[1]);
+    if(want[ck]&&ck!==start){ found=want[ck]; break; }
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(let di=0;di<dirs.length;di++){
+      const nx=cur[0]+dirs[di][0], ny=cur[1]+dirs[di][1];
+      if(nx<0||ny<0||nx>=N||ny>=N) continue;
+      if(m.g[ny]&&m.g[ny][nx]) continue;
+      const nk=key(nx,ny);
+      if(prev[nk]!==-2) continue;
+      prev[nk]=ck;
+      q.push([nx,ny]);
+    }
+  }
+  if(!found) return null;
+  const path=[];
+  let k=key(found.x,found.y), guard=0;
+  while(k!==-1&&k!==-2&&guard++<N*N){
+    path.push({x:k%N, y:(k/N)|0});
+    k=prev[k];
+  }
+  path.reverse();
+  return {dest:found, path:path};
+}
+function fieldRoute(m){
+  const near=fieldWalk(m, fieldTargets(m));
+  if(near) return near;
+  const exit=fieldExit(m);
+  const via=fieldWalk(m, [exit]);
+  if(via) return via;
+  return {dest:exit, path:[exit]};
+}
+function fieldRouteCaption(m){
+  const route=fieldRoute(m);
+  const dest=route&&route.dest?route.dest:fieldExit(m);
+  const exit=fieldExit(m);
+  const steps=(m&&m.steps)||0;
+  const exitWord=exit.kind==="TOWER"?"TOWER":"EAST";
+  return "NEXT: "+dest.kind+"    EXIT: "+exitWord+"    "+steps+" STEPS";
+}
 function rMap(){
   const a=G.adv,m=a.map;
   bgFill(m.ogre?"#150c12":"#0e1014", m.ogre?"#0a0508":"#08090b");
@@ -8574,11 +8760,31 @@ function rMap(){
     cx.strokeStyle="#2a2d35"; cx.strokeRect(ox-1.5,oy-1.5,m.N*C+1,m.N*C+1);
   }
   const cell=(x,y)=>[ox+x*C,oy+y*C];
+  const route=fieldRoute(m);
+  (route.path||[]).forEach((p,i)=>{
+    if(!i) return;
+    const X=ox+p.x*C, Y=oy+p.y*C;
+    cx.fillStyle="rgba(34,211,238,.42)";
+    cx.fillRect(X+2,Y+2,C-6,C-6);
+    cx.fillStyle="#e0faff";
+    cx.fillRect(X+C/2-3,Y+C/2-3,6,6);
+    /* Walls beside the route show through the fog, so the path is a
+       corridor and not a line you discover by walking into stone. */
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(dxy=>{
+      const nx=p.x+dxy[0], ny=p.y+dxy[1];
+      if(nx<0||ny<0||nx>=m.N||ny>=m.N) return;
+      if(!m.g[ny]||!m.g[ny][nx]) return;
+      if(m.seen[ny]&&m.seen[ny][nx]) return;
+      const WX=ox+nx*C, WY=oy+ny*C;
+      cx.fillStyle="rgba(139,155,179,.72)";
+      cx.fillRect(WX+3,WY+3,C-8,C-8);
+    });
+  });
   const pal=(typeof mapPalette==="function")?mapPalette(!!m.ogre):null;
   {
     const [X,Y]=cell(14,m.exitY);
     if(typeof paintMapEntity==="function")
-      paintMapEntity(cx,"exit",X,Y,C,{seen:!!m.seen[m.exitY][14],ogre:!!m.ogre,pal});
+      paintMapEntity(cx,"exit",X,Y,C,{seen:true,ogre:!!m.ogre,pal});
     else {
       cx.fillStyle=m.seen[m.exitY][14]?(m.ogre?RED:GOLD):"#20242e";
       cx.fillRect(X+4,Y+2,C-10,C-6);
@@ -8643,6 +8849,14 @@ function rMap(){
       cx.strokeStyle=RED; cx.lineWidth=2; cx.strokeRect(X+5.5,Y+5.5,C-13,C-13); cx.lineWidth=1;
     }
   }
+  if(route&&route.dest){
+    const d=route.dest, X=ox+d.x*C, Y=oy+d.y*C;
+    cx.strokeStyle=(d.kind==="EXIT"||d.kind==="TOWER")?GOLD:AQUA;
+    cx.lineWidth=2;
+    cx.strokeRect(X+1.5,Y+1.5,C-5,C-5);
+    cx.lineWidth=1;
+    txt(d.kind, X+C/2, Y+C-5, 10, "#f8fafc", "center", 800);
+  }
   /* click-to-step: the four neighbouring tiles are buttons - but only when
      the map is the live scene, not when it is a backdrop under the gym */
   if(G.scene===S.MAP){
@@ -8671,17 +8885,17 @@ function rMap(){
   txt("PURSE",30,384,10.5,DIM,"left",700); txt(a.purse||0,200,384,11.5,GOLD,"right",700);
   txt("CONTINUES",30,404,10.5,DIM,"left",700); txt(a.continues,200,404,11.5,a.continues?GOLD:DIM,"right",700);
   drawGradeChip(30, 414, 180);
-  txt("LEGEND",30,450,9.5,DIM,"left",700);
-  cx.fillStyle=RED; cx.beginPath(); cx.moveTo(36,456); cx.lineTo(43,467); cx.lineTo(29,467); cx.closePath(); cx.fill();
-  txt("FORCE",50,466,9.5,DIM,"left",600);
-  cx.fillStyle=GOLD; cx.fillRect(30,472,11,11); txt("RIVAL",50,482,9.5,DIM,"left",600);
-  cx.fillStyle=GRN; cx.fillRect(118,456,11,11); txt("TEMPLE",138,466,9.5,DIM,"left",600);
-  cx.strokeStyle="#8a9099"; cx.lineWidth=1.5;
-  cx.beginPath(); cx.moveTo(124,472); cx.lineTo(131,483); cx.lineTo(117,483);
+  txt("LEGEND",30,450,12,AQUA,"left",800);
+  cx.fillStyle=RED; cx.beginPath(); cx.moveTo(34,460); cx.lineTo(44,472); cx.lineTo(24,472); cx.closePath(); cx.fill();
+  txt("FORCE",48,470,12,INK,"left",700);
+  cx.fillStyle=GOLD; cx.fillRect(112,458,12,12); txt("RIVAL",128,470,12,INK,"left",700);
+  cx.fillStyle=GRN; cx.fillRect(28,478,12,12); txt("TEMPLE",48,488,12,INK,"left",700);
+  cx.strokeStyle="#e5e7eb"; cx.lineWidth=2;
+  cx.beginPath(); cx.moveTo(118,478); cx.lineTo(126,490); cx.lineTo(110,490);
   cx.closePath(); cx.stroke(); cx.lineWidth=1;
-  txt("PATROL",138,482,9.5,DIM,"left",600);
+  txt("PATROL",128,488,12,INK,"left",700);
   const hunted=m.foes.filter(o=>!o.done&&o.hunting).length;
-  txt(hunted?hunted+" CLOSING IN":LG("b","PAUSE")+"   "+LG("y","DOSSIER"),121,H-48,9.5,hunted?RED:"#5d626c","center",hunted?800:600);
+  txt(hunted?hunted+" CLOSING IN":LG("b","PAUSE")+"   "+LG("y","DOSSIER"),121,506,12,hunted?RED:INK,"center",hunted?800:700);
   // Dedicated Live Target & Hazard Telemetry HUD (x: 716..944, y: 28..504)
   panel(716, 28, 228, H-64, "rgba(12,15,22,.94)", "#262c3b", "rgba(34,211,238,.06)", 10);
   txt("HAZARD TELEMETRY", 830, 48, 11.5, AQUA, "center", 800);
@@ -8702,8 +8916,8 @@ function rMap(){
     drawPortrait(tfId, 742, 134, 44, 44, false);
     const foeLabel = targetFoe.boss ? "SUPREME BOSS" : foeName(targetFoe);
     txt(foeLabel, 794, 150, 10.5, INK, "left", 800);
-    txt("LV " + targetFoe.lv + " \u00B7 DANGER", 794, 168, 9, DIM, "left", 600);
-    txt(targetFoe.hunting ? "CLOSING IN FAST" : "STANDBY IN FIELD", 830, 218, 9, targetFoe.hunting ? RED : DIM, "center", 700);
+    txt("LV " + targetFoe.lv + " \u00B7 DANGER", 794, 168, 11, "#e5e7eb", "left", 700);
+    txt(targetFoe.hunting ? "CLOSING IN FAST" : "STANDBY IN FIELD", 830, 218, 11, targetFoe.hunting ? RED : "#e5e7eb", "center", 700);
   } else {
     panel(730, 106, 200, 126, "rgba(16,21,32,.9)", "#283042", null, 6);
     txt("SECTOR CLEARED", 830, 170, 12, GRN, "center", 800);
@@ -8725,19 +8939,19 @@ function rMap(){
   const streakMul = (1.0 + Math.min(1.5, ((a.won || 0) * 0.1))).toFixed(1);
   panel(730, 336, 200, 44, "rgba(245,158,11,.08)", GOLD, null, 4);
   txt("PURSE MULTIPLIER: " + streakMul + "x", 830, 354, 10, GOLD, "center", 800);
-  txt("BOUNTY: +" + Math.round((a.purse || 0) * 0.2) + " COINS", 830, 370, 9, DIM, "center", 600);
+  txt("BOUNTY: +" + Math.round((a.purse || 0) * 0.2) + " COINS", 830, 370, 11, "#e5e7eb", "center", 700);
 
   if(a.challenge && CHALLENGE_BY_ID[a.challenge]){
     const mut=(typeof challengeMutatorLabel==="function")?challengeMutatorLabel(a.challenge):null;
     panel(730, 388, 200, 58, "rgba(34,211,238,.08)", a.challengeDone ? GRN : AQUA, null, 4);
     txt(a.challengeDone ? (a.challengeMastery?"MASTERY MET":"CHALLENGE MET") : "CHALLENGE OBJECTIVE", 830, 404, 9, a.challengeDone ? GRN : AQUA, "center", 800);
     txt(CHALLENGE_BY_ID[a.challenge].name.toUpperCase(), 830, 420, 9, INK, "center", 700);
-    txt(mut || (a.challengeMastery ? "RENOWN REPLAY" : "STANDING OBJECTIVE"), 830, 436, 8, DIM, "center", 600);
+    txt(mut || (a.challengeMastery ? "RENOWN REPLAY" : "STANDING OBJECTIVE"), 830, 436, 11, "#e5e7eb", "center", 700);
   }
 
-  panel(240,H-34,460,26,"rgba(8,9,11,.92)","#252831");
-  txt(fieldMoveLegend(),252,H-16,11,AQUA,"left",800);
-  txt(m.msg||("FIND THE "+(m.ogre?"TOWER":"EXIT")+(m.ogre?"":" - EAST SIDE")+" - "+m.steps+" STEPS LEFT"),468,H-16,11,INK,"left",700);
+  panel(240,H-52,470,44,"rgba(8,9,11,.94)","#4b5c78");
+  txt(fieldMoveLegend(),252,H-34,14,AQUA,"left",800);
+  txt(fieldRouteCaption(m),252,H-14,14,INK,"left",800);
 }
 function rPause(){
   rMap();
@@ -9012,7 +9226,7 @@ function rBrief(){
   drawDifficultyBadge(W/2-80,24,160,24);
   drawFighterArt(a.hero, 240, 520, 400, false);
   const oppFid=f.boss?BOSS_ID:(f.tf?f.art:f.id);
-  drawFighterArt(oppFid, 720, 520, 400, true, f.tf);
+  drawFighterArt(oppFid, 720, 520, 400, true, ringSilhouette(f));
   txt("VS",W/2,280,54,RED,"center",800,true);
   txt(FIGHTERS[a.hero].name,240,70,16,INK,"center",800);
   /* the banked meter rides the hero's own line rather than taking a row: the
@@ -9272,7 +9486,9 @@ function techRow(d,tech,x,y,w,on,side,note){
 const CMD_ROWS=5;
 function drawCommand(d,side,label){
   panel(16,398,W-32,H-406,"rgba(8,9,11,.92)","#252831");
-  txt(label,30,414,10.5,DIM,"left",700);
+  const added=(side===d.p&&d.handNote&&d.handNote.name)
+    ?("ADDED TO YOUR HAND: "+d.handNote.name):null;
+  txt(added||label,30,414,added?13:12,added?GOLD:INK,"left",800);
   const tabs=cmdTabs(d,side), tabIx=cmdTabIx(d,side), tab=tabs[tabIx].key;
   const bag=(side===d.p&&bagOpen(d))?(G.adv.corner||[]):null;
   const bagReady=bag?bag.some(id=>bagLit(d,CORNER_ITEMS[id])):false;
@@ -9381,7 +9597,7 @@ function drawCommand(d,side,label){
           fit:fit>=1?"good":fit>=.7?"ok":"bad",
           first:mine?(forecastFirst(d,side,tq)>0?1:forecastFirst(d,side,tq)<0?-1:0):0,
           stam:st, affordable:st<=side.stam,
-          note:hint?hint.note:null,
+          note:hint?((d.lessonFight?(hint.edge>0?"GOOD. ":hint.edge<0?"BAD. ":""):"")+hint.note):null,
           noteColor:hint?(hint.edge>0?GRN:"#c96a5a"):null
         };
       });
@@ -9423,10 +9639,10 @@ function drawCommand(d,side,label){
     if(tab==="SIGNATURE"&&side.sig&&side.sig.desc)
       txt(side.sig.desc,W/2,478,10,DIM,"center",600);
   }
-  txt(LG("a","EXECUTE")+"   [1]-[5] PICK CARD   \u2190 \u2192 SWITCH [ATTACK / DEFENSE / SPECIAL]",30,H-8,10.5,INK,"left",700);
-  if(!d.hotseat) txt(LG("y","READ (1 FOCUS)"),300,H-8,10.5,
-                     (side.focus&&!d.readShown)?GOLD:"#5d626c","left",700);
-  txt("STAMINA "+Math.max(0,Math.round(side.stam))+"/"+side.maxStam,W-30,H-8,10.5,DIM,"right",700);
+  txt(LG("a","EXECUTE")+"   [1]-[5] PICK CARD   \u2190 \u2192 SWITCH [ATTACK / DEFENSE / SPECIAL]",30,H-8,12,INK,"left",800);
+  if(!d.hotseat) txt(LG("y","READ (1 FOCUS)"),300,H-8,12,
+                     (side.focus&&!d.readShown)?GOLD:"#d1d5db","left",700);
+  txt("STAMINA "+Math.max(0,Math.round(side.stam))+"/"+side.maxStam,W-30,H-8,12,INK,"right",700);
   /* Exhibition practice overlay: initiative / power / stamina of the row under
      the cursor, so the lab can teach without a trip back to the Dojo. */
   if(d.exhibition&&d.exhib&&d.exhib.overlay&&list&&list.length){
@@ -9513,7 +9729,7 @@ function rTapeCard(d){
 
   bgFill("#101318","#07080a");
   drawFighterArt(d.p.fid,150,470,300,false);
-  drawFighterArt(d.boss?BOSS_ID:d.e.fid,810,470,300,true,d.tf);
+  drawFighterArt(d.boss?BOSS_ID:d.e.fid,810,470,300,true,ringSilhouette(d));
   cx.fillStyle="rgba(5,6,8,.72)"; cx.fillRect(0,0,W,H);
 
   txt("VS",W/2,46,26,RED,"center",800,true);
@@ -9656,7 +9872,7 @@ function rDuel(){
   drawFighterArt(d.p.fid, 200+entOff("p")+shake(d.p)+lunge(d.p,1)+pa.dx, 392+pa.dy, 300*pa.scale,
                  false, false, entAl("p",pa.alpha), entFl("p",Math.max(d.p.flash,pa.flash||0)), pa.rot||0);
   drawFighterArt(d.boss?BOSS_ID:d.e.fid, 760+entOff("e")+shake(d.e)+lunge(d.e,-1)+ea.dx, 392+ea.dy, 300*ea.scale,
-                 true, d.tf, entAl("e",ea.alpha), entFl("e",Math.max(d.e.flash,ea.flash||0)), ea.rot||0);
+                 true, ringSilhouette(d), entAl("e",ea.alpha), entFl("e",Math.max(d.e.flash,ea.flash||0)), ea.rot||0);
   
   if(motionOn()&&d.fx&&(G.t%5===0)&&typeof spectacleSpawnStatusAura==="function"){
     const pfx=200+entOff("p")+shake(d.p)+lunge(d.p,1)+pa.dx, pfy=392+pa.dy;
@@ -9915,8 +10131,9 @@ function rDuel(){
     cx.restore();
     panel(16,398,W-32,H-406,"rgba(8,9,11,.92)","#252831");
     txt("INCOMING - "+(d.ev?d.ev.name.toUpperCase():""),W/2,436,22,RED,"center",800,true);
-    txt("TIME YOUR GUARD ("+KH("b")+") AS THE RING MEETS THE TARGET",W/2,466,13,INK,"center",700);
-    txt("PERFECT GUARD CUTS 58% AND BANKS FOCUS",W/2,490,10.5,DIM,"center",600);
+    txt("TIME YOUR GUARD ("+KH("b")+") AS THE RING MEETS THE TARGET",W/2,466,15,INK,"center",800);
+    txt(d.lessonFight?"HIT THE WINDOW. PRESS ON THE MARK.":"PERFECT GUARD CUTS 58% AND BANKS FOCUS",
+        W/2,492,d.lessonFight?16:13,d.lessonFight?GOLD:INK,"center",800);
 
   } else if(d.ph===D.SUPER){
     const who=d.supFor==="p"?d.p:d.e, tech=who.sig;
@@ -10054,6 +10271,19 @@ function drawTeaching(d){
     persist();
     d.lessonId=null;
   }
+  if(d.lessonFight){
+    const beat=teachBeat(d);
+    if(beat){
+      panel(W/2-310,312,620,40,"rgba(8,11,18,.94)",AQUA,null,6);
+      txt(beat.line,W/2,d.tellGrade?328:336,13,INK,"center",800);
+      if(d.tellGrade){
+        const good=d.tellGrade.indexOf("ANSWERED")===0;
+        const bad=d.tellGrade.indexOf("BAD")===0;
+        txt(d.tellGrade,W/2,346,12,good?GRN:(bad?RED:GOLD),"center",800);
+      }
+      return;
+    }
+  }
   const tip=Onboarding.coachTip(d,d.p,octx);
   if(tip&&tip.text){
     const tone=tip.tone==="urgent"?RED:tip.tone==="warn"?GOLD:tip.tone==="good"?GRN:AQUA;
@@ -10100,7 +10330,7 @@ function drawPayout(){
       cx.strokeStyle="rgba(216,162,74,.4)";
       cx.lineWidth=1;
       cx.strokeRect(W/2-210.5,H-118.5,421,25);
-      txt("FIGHT PURSE: +$"+G.payPurse+(G.payRevenge?"  -  GRUDGE REVENGE BOUNTY":""),W/2,H-105,12,GOLD,"center",800);
+      txt("FIGHT PURSE: +$"+G.payPurse+(G.payRevenge?"  -  GRUDGE REVENGE BOUNTY":"")+"  -  SPEND IT AT THE GYM",W/2,H-105,12,GOLD,"center",800);
     }
     cx.restore();
   }
@@ -10109,8 +10339,10 @@ function drawPayout(){
     const m=P.mastery;
     /* canvas text, not markup - txt() draws the string verbatim, so an HTML
        entity here rendered as the literal "&MIDDOT;" across the result screen */
+    const beltHint=(!m.levelled&&m.to&&m.to.level===0)?"   -   40 XP REACHES WHITE BELT AND +1 FOCUS":"";
     txt("+"+m.gained+" MASTERY XP   -   "+m.to.name.toUpperCase()
-        +(m.levelled?"   -   NEW BELT UNLOCKED!":""),W/2,H-84,11,m.levelled?GOLD:DIM,"center",m.levelled?800:600);
+        +(m.levelled?"   -   NEW BELT UNLOCKED!":beltHint),
+        W/2,H-84,12,m.levelled?GOLD:INK,"center",m.levelled?800:700);
   }
   if(P.titles&&P.titles.length)
     txt("TITLE EARNED: "+P.titles.map(id=>titleOf(id).toUpperCase()).join(", "),
@@ -10136,21 +10368,34 @@ function drawPayout(){
    no method line, no grade slam, no stat tab, no brag card, no parade of
    titles. The result, the points, the purse, the one title a patrol may hand
    out, and the way on. */
+function rewardGuideLines(){
+  return [
+    "CARD POINTS BUY A LEVEL AT A TEMPLE. 10 POINTS IS 1 LEVEL.",
+    "PURSE IS SPENT AT THE GYM: CUT A TECHNIQUE, DRILL ONE, OR BUY CORNER KIT.",
+    "MASTERY XP RAISES THE BELT. 40 REACHES WHITE AND STARTS YOU WITH FOCUS."
+  ];
+}
 function drawPatrolCard(r){
   const P=G.payout||{};
-  txt("PATROL CLEARED",W/2,178,34,INK,"center",800,true);
-  if(r.perfect) txt("PERFECT",W/2,206,16,GOLD,"center",800);
-  panel(W/2-200,226,400,96,"rgba(10,11,14,.9)","#2a2d35",null,6);
-  txt(r.msg,W/2,252,13,INK,"center",700);
-  txt("PURSE  +$"+(G.payPurse||0),W/2,274,12,GOLD,"center",800);
-  if(P.mastery)
-    txt("+"+P.mastery.gained+" MASTERY XP   -   "+P.mastery.to.name.toUpperCase(),
-        W/2,294,10.5,P.mastery.levelled?GOLD:DIM,"center",P.mastery.levelled?800:600);
+  txt("PATROL CLEARED",W/2,150,34,INK,"center",800,true);
+  if(r.perfect) txt("PERFECT",W/2,176,16,GOLD,"center",800);
+  panel(W/2-280,188,560,250,"rgba(10,11,14,.94)","#3a4254",null,6);
+  txt(r.msg,W/2,214,15,INK,"center",800);
+  txt("SPEND CARD POINTS AT A TEMPLE. 10 POINTS IS 1 LEVEL.",W/2,236,13,AQUA,"center",700);
+  txt("PURSE  +$"+(G.payPurse||0)+"   -   SPEND IT AT THE GYM",W/2,264,14,GOLD,"center",800);
+  txt("THE GYM SELLS A CUT, A DRILL, AND CORNER KIT.",W/2,286,13,INK,"center",700);
+  if(P.mastery){
+    const beltHint=(!P.mastery.levelled&&P.mastery.to&&P.mastery.to.level===0)
+      ?"   -   40 XP REACHES WHITE BELT":"";
+    txt("+"+P.mastery.gained+" MASTERY XP   -   "+P.mastery.to.name.toUpperCase()+beltHint,
+        W/2,314,13,P.mastery.levelled?GOLD:INK,"center",P.mastery.levelled?800:700);
+    txt("THE BELT IS PERMANENT. WHITE STARTS THE NEXT FIGHT WITH FOCUS.",W/2,336,13,INK,"center",700);
+  }
   if(P.titles&&P.titles.length)
-    txt("TITLE EARNED: "+titleOf(P.titles[0]).toUpperCase(),W/2,312,11,GOLD,"center",800);
+    txt("TITLE EARNED: "+titleOf(P.titles[0]).toUpperCase(),W/2,364,14,GOLD,"center",800);
   const cer=G.cer;
   if((!cer||ceremonyPhase(cer,"prompt")>0)&&(G.t/30|0)%2)
-    txt("PRESS "+LG("a","CONTINUE"),W/2,372,14,INK,"center",800);
+    txt("PRESS "+LG("a","CONTINUE"),W/2,420,16,INK,"center",800);
 }
 function rResult(){
   const r=G.result;
@@ -10894,7 +11139,7 @@ function step(){
   // The title no longer waits on 1.4 MB of art - it waits on the two portraits
   // it actually draws, and after four seconds it stops waiting at all, so a
   // decode failure can never strand you on the loading screen.
-  if(G.scene===S.LOAD && (artReady() || (loadedN>=4 && G.t>75) || G.t>240)){ G.scene=S.TITLE; }
+  if(G.scene===S.LOAD && (artReady() || (loadedN>=4 && G.t>75) || G.t>240)){ G.scene=S.TITLE; focusArena(); }
   /* the cabinet fights itself when nobody is standing at it. attractTick runs
      unconditionally so the demo's own clock advances while the scene is DUEL;
      the else branch zeroes the idle counter on every screen but the title.
@@ -11295,6 +11540,9 @@ function updateRom(t){
 }
 updateRom({id:0});
 try{ syncTouchControls(); }catch(e){}
+/* Title keys have to work before the first click. The focus gate stays:
+   a click outside the arena still releases the keyboard to the page. */
+focusArena();
 if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});

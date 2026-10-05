@@ -119,10 +119,14 @@ module.exports = function (h) {
   {
     const begin = () => {
       A.exec("SAVE=DEF_SAVE(); persist(); G.adv=newAdv(0,0); newField(G.adv); G.scene=S.MAP;");
+      /* The first two stage-one fights of a fresh run are a lesson and
+         are not one exchange. This is a later patrol. */
+      A.exec("G.adv.fights=2; SAVE.rec.duels=3;");
       A.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
     };
     begin();
-    ok(A.exec("G.duel.oneShot") === true, "a field patrol is one exchange");
+    ok(A.exec("G.duel.lessonFight") === false, "a later patrol is not a lesson");
+    ok(A.exec("G.duel.oneShot") === true, "a later field patrol is one exchange");
     A.exec("G.duel.p.hp=90; G.duel.e.hp=29; G.duel.pHp0=100; G.duel.eHp0=40;" +
            "G.duel.msg='HIT 11'; G.duel.msg2='LOW ROUNDHOUSE';");
     A.turnEnd(A.G.duel);
@@ -206,5 +210,164 @@ module.exports = function (h) {
     ok(drawn.indexOf("B / ESC - TITLE") >= 0, "and B, which returns to the title", drawn);
     A.exec("setFocused(true); onArenaKey({key:'z',preventDefault:function(){}})");
     ok(scene() === "SELECT", "Z selects the highlighted row", scene());
+  }
+
+  section("a patrol in the ring is lit like the player");
+  {
+    ok(A.exec("ringSilhouette()") === false, "the ring does not ask for a black silhouette");
+    ok(PAGE.indexOf("function ringSilhouette(){ return false; }") > 0, "the built page keeps that rule");
+    ok(PAGE.indexOf("ringSilhouette(d)") > 0 && PAGE.indexOf("ringSilhouette(f)") > 0,
+       "the brief, the tape and the ring all ask it");
+    ok(PAGE.indexOf("true, d.tf") < 0 && PAGE.indexOf("true, f.tf") < 0 && PAGE.indexOf("true,!!d.tf") < 0,
+       "none of them pass the patrol flag as the black-paint switch");
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv);");
+    A.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    ok(A.exec("oppName(G.duel)") === "AZX FORCE", "the name is still AZX FORCE");
+    ok(A.exec("G.duel.e.fid") >= 0 && A.exec("FIGHTERS[G.duel.e.fid].name") !== "AZX FORCE",
+       "and the body is a roster fighter's art", A.exec("FIGHTERS[G.duel.e.fid].name"));
+  }
+
+  section("the field shows the exit and the next step");
+  {
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv); G.scene=S.MAP;");
+    const route = A.exec("(function(){ var m=G.adv.map; var r=fieldRoute(m); var walls=0;" +
+      "(r.path||[]).forEach(function(p){ if(m.g[p.y]&&m.g[p.y][p.x]) walls++; });" +
+      "return {n:(r.path||[]).length, walls:walls, kind:r.dest&&r.dest.kind, ex:fieldExit(m).x, ey:m.exitY}; })()");
+    ok(route.n > 1, "a fresh field has a path off the start tile", route.n);
+    ok(route.walls === 0, "and that path does not step on a wall", route.walls);
+    ok(["FORCE", "RIVAL", "CAMP", "GYM", "TEMPLE", "CARD", "EXIT", "TOWER"].indexOf(route.kind) >= 0,
+       "the path ends on a node or the exit", route.kind);
+    ok(route.ex === 14, "the exit sits on the east edge", route.ex);
+    const capLine = A.exec("fieldRouteCaption(G.adv.map)");
+    ok(capLine.indexOf("NEXT:") >= 0 && capLine.indexOf("EXIT:") >= 0, "the caption names the next node and the exit", capLine);
+    ok(capLine.indexOf("EAST") >= 0 || capLine.indexOf("TOWER") >= 0, "and which way the exit is", capLine);
+    const drawn = joined(cap(() => frames(1)));
+    ok(drawn.indexOf("ARROWS / WASD - MOVE") >= 0, "the movement hint stays", drawn);
+    ok(drawn.indexOf("NEXT:") >= 0 && drawn.indexOf("EXIT:") >= 0, "the field prints the route", drawn);
+    const pal = A.exec("mapPalette(false)");
+    ok(pal.floor !== "#07080a" && pal.grid !== "#07080a", "the floor and the grid are lighter than the void", pal.floor + " / " + pal.grid);
+  }
+
+  section("the first fights of a fresh run last long enough to teach");
+  {
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv);");
+    A.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    ok(A.exec("G.duel.lessonFight") === true, "the first stage-one fight is a lesson");
+    ok(A.exec("G.duel.oneShot") === false, "so it is not over after one exchange");
+    ok(A.exec("G.duel.e.hp") >= 110, "and the opponent has enough health to take several hits", A.exec("G.duel.e.hp"));
+    ok(A.exec("G.duel.e.atkMul") < A.exec("mkSide(3,40,[0,1,2,3,4],{level:1}).atkMul"),
+       "only this bout's hands are softer");
+    const tell = A.exec("teachBeat(G.duel)");
+    ok(tell && tell.line.indexOf("READ THE TELL") >= 0, "the opening beat is the tell", tell && tell.line);
+    A.exec("G.duel.turn=1;");
+    const answer = A.exec("teachBeat(G.duel)");
+    ok(answer && answer.line.indexOf("ANSWER THE TELL") >= 0, "the next beat is answering it", answer && answer.line);
+    A.exec("G.duel.turn=2;");
+    const timing = A.exec("teachBeat(G.duel)");
+    ok(timing && timing.line.indexOf("HIT THE WINDOW") >= 0, "then the timing window", timing && timing.line);
+    A.exec("G.duel.turn=0; G.duel.eTech=TECH.basic_sprawl||TECH[G.duel.e.techs[0]];");
+    const grade = A.exec("(function(){ var d=G.duel; var t=TECH.basic_sprawl;" +
+      "d.eTech=t; return gradeTell(d, TECH.basic_guard||TECH[d.p.techs[0]]); })()");
+    ok(typeof grade === "string" && grade.length > 0, "a chosen card is graded against the tell", grade);
+    A.exec("G.duel.ph=D.CMD; G.duel.turn=0; G.scene=S.DUEL;" +
+           "if(typeof Onboarding!=='undefined') Onboarding.markSeen(SAVE,'l_range');");
+    const drawn = joined(cap(() => frames(1)));
+    ok(drawn.indexOf("READ THE TELL") >= 0, "the fight screen prints the tell beat", drawn);
+    A.exec("G.duel.e.hp=0; endDuel(G.duel);");
+    A.exec("startDuel({fromAdv:true,tf:true,oppFid:4,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    ok(A.exec("G.duel.lessonFight") === true && A.exec("G.duel.oneShot") === false,
+       "the second fight of that run is still a lesson");
+    A.exec("G.duel.e.hp=0; endDuel(G.duel);");
+    A.exec("startDuel({fromAdv:true,tf:true,oppFid:5,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    ok(A.exec("G.duel.lessonFight") === false && A.exec("G.duel.oneShot") === true && A.exec("G.duel.e.hp") === 40,
+       "the third fight is an ordinary patrol again", A.exec("G.duel.e.hp"));
+    fresh();
+    A.exec("G.adv=newAdv(0,0); G.adv.ng=1; newField(G.adv);");
+    A.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    ok(A.exec("G.duel.lessonFight") === false, "new game plus is not retaught");
+    fresh();
+    A.exec("G.adv=newAdv(0,0); G.adv.stage=2; newField(G.adv);");
+    A.exec("startDuel({fromAdv:true,oppFid:3,oppHp:90,oppPool:[0,1,2,3,4],oppLv:4,stage:2});");
+    ok(A.exec("G.duel.lessonFight") === false && A.exec("G.duel.e.hp") === 90,
+       "a later stage keeps the health it was given", A.exec("G.duel.e.hp"));
+  }
+
+  section("a learned technique leads the next hand");
+  {
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv); G.adv.fights=2; SAVE.rec.duels=3;");
+    const id = A.exec("(function(){ var pool=draftPool(G.adv);" +
+      "for(var i=0;i<pool.length;i++){ if(pool[i]&&pool[i].id) return pool[i].id; } return null; })()");
+    ok(!!id && A.TECH[id], "there is a technique this run can learn", id);
+    const applied = A.exec("applyDraft(G.adv," + JSON.stringify(id) + ")");
+    ok(applied && applied.id === id, "the draft takes it", applied && applied.id);
+    A.exec("G.adv.handNote={id:" + JSON.stringify(id) + ", name:TECH[" + JSON.stringify(id) + "].name};");
+    A.exec("startDuel({fromAdv:true,oppFid:3,oppHp:90,oppPool:[0,1,2,3,4],oppLv:4,stage:1}); beginRound(G.duel);");
+    ok(A.exec("G.adv.handNote") === null, "the note is spent on this fight");
+    ok(A.exec("G.duel.handNote&&G.duel.handNote.id") === id, "the fight remembers what was added");
+    ok(A.exec("menuTechsFor(G.duel,G.duel.p)[0].id") === id, "and that card leads the hand", A.exec("menuTechsFor(G.duel,G.duel.p)[0].id"));
+    A.exec("G.duel.ph=D.CMD; G.scene=S.DUEL;");
+    const drawn = joined(cap(() => frames(1)));
+    ok(drawn.indexOf("ADDED TO YOUR HAND") >= 0, "the hand says it was added", drawn);
+    ok(drawn.indexOf(A.TECH[id].name) >= 0, "and names the technique", A.TECH[id].name);
+  }
+
+  section("a reward says what the purse and the points are for");
+  {
+    const lines = A.exec("rewardGuideLines()");
+    ok(lines.length === 3, "three lines, one per thing a fight pays", lines.length);
+    const blob = lines.join(" | ");
+    ok(blob.indexOf("TEMPLE") >= 0 && blob.indexOf("GYM") >= 0 && blob.indexOf("BELT") >= 0,
+       "points, purse and the belt each name where they go", blob);
+    fresh();
+    A.exec("G.adv=newAdv(0,0); newField(G.adv); G.adv.fights=2; SAVE.rec.duels=3;");
+    A.exec("startDuel({fromAdv:true,tf:true,oppFid:3,oppHp:40,oppPool:[0,1,2,3,4],oppLv:1,stage:1});");
+    A.exec("G.duel.e.hp=0; G.duel.stats.win=true; endDuel(G.duel); G.scene=S.RESULT;");
+    const drawn = joined(cap(() => frames(1)));
+    ok(drawn.indexOf("PATROL CLEARED") >= 0, "the patrol card is the one on screen", drawn);
+    ok(drawn.indexOf("TEMPLE") >= 0, "card points say they buy a level at a temple", drawn);
+    ok(drawn.indexOf("GYM") >= 0, "the purse says to spend it at the gym", drawn);
+    ok(drawn.indexOf("WHITE") >= 0 || drawn.indexOf("BELT") >= 0, "mastery says what the belt is", drawn);
+  }
+
+  section("every roster row clears the footer");
+  {
+    fresh();
+    A.exec("G.selMode='adventure'; G.scene=S.SELECT; G.sel=0;");
+    const rib = A.exec("rosterRibbon()");
+    ok(rib.rows >= 4, "the stock roster is four rows", rib.rows);
+    ok(rib.bottom <= rib.footerY, "and the last row finishes above the footer", rib.bottom + " vs " + rib.footerY);
+    ok(rib.bottom <= 500 && rib.footerY === 500, "on the 960x540 canvas that 1280x800 letterboxes", rib.bottom);
+    const drawn = joined(cap(() => frames(1)));
+    const last = A.FIGHTERS[A.FIGHTERS.length - 1].name;
+    ok(drawn.indexOf(last) >= 0, "the last fighter is drawn, not clipped off the canvas", last);
+    A.exec("(function(){ SAVE.customFighters=[]; for(var i=0;i<10;i++) SAVE.customFighters.push({name:'ENTRY '+i,deck:0}); syncCustomFighters(); })();");
+    const extra = A.exec("rosterRibbon()");
+    ok(extra.rows > rib.rows, "registered fighters add a row", extra.rows);
+    ok(extra.bottom <= extra.footerY, "and that row still clears the footer", extra.bottom + " vs " + extra.footerY);
+    A.exec("SAVE.customFighters=[]; syncCustomFighters();");
+    ok(A.exec("FIGHTERS.length") === 25, "the stock roster is restored");
+  }
+
+  section("the title takes the keyboard on load");
+  {
+    const boot = PAGE.lastIndexOf("focusArena();");
+    const raf = PAGE.lastIndexOf("requestAnimationFrame(mainLoop);");
+    ok(boot > 0 && boot < raf, "focus is placed before the first frame");
+    ok(PAGE.indexOf('href="manifest.json"') < 0, "the built page does not request manifest.json");
+    ok(PAGE.indexOf('rel="icon"') > 0, "it carries its own icon");
+    ok(PAGE.indexOf('href="favicon.ico"') < 0 && PAGE.indexOf("href='favicon.ico'") < 0,
+       "and it does not request favicon.ico");
+    const sw = fs.readFileSync(path.resolve(__dirname, "..", "sw.js"), "utf8");
+    ok(sw.indexOf("manifest.json") < 0, "the service worker does not fetch the manifest either");
+    A.exec("G.scene=S.TITLE; setFocused(false);");
+    ok(A.exec("arenaFocused()") === false, "an unfocused title still ignores keys");
+    A.exec("focusArena();");
+    ok(A.exec("arenaFocused()") === true, "focusArena puts the keyboard on the arena");
+    A.exec("onArenaKey({key:'Enter',preventDefault:function(){}})");
+    ok(scene() === "MENU", "so Enter on the title works without a click", scene());
   }
 };
